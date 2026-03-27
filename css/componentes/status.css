@@ -1,0 +1,108 @@
+/*
+========================================
+COMPONENTE: STATUS
+----------------------------------------
+Status de validade, compra e tags auxiliares.
+========================================
+*/
+
+.legenda-alertas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tags-alerta-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-alerta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.tag-vermelha {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.tag-amarela {
+    background: #fffbeb;
+    color: #a16207;
+    border-color: #fde68a;
+}
+
+.tag-laranja {
+    background: #fff7ed;
+    color: #c2410c;
+    border-color: #fdba74;
+}
+
+.tag-azul {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-vencida {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.status-vence-breve {
+    background: #fffbeb;
+    color: #a16207;
+    border-color: #fde68a;
+}
+
+.status-valida {
+    background: #ecfdf3;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+/* ===============================
+   STATUS DE COMPRA MELHORADOS
+=============================== */
+
+.status-compra-urgente {
+    background: #fff4ec;
+    color: #c05621;
+    border: 1px solid #f4b183;
+}
+
+.status-compra-breve {
+    background: #edf4ff;
+    color: #2d63e8;
+    border: 1px solid #bfd3ff;
+}
+
+.status-estoque-ok {
+    background: #e8f8ee;
+    color: #1f8f4e;
+    border: 1px solid #a9e0bb;
+}

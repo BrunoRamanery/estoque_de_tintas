@@ -1,0 +1,7 @@
+<FilesMatch "\.(env|ini|log|bak|old|orig|tmp|temp|swp|dist|sql)$">
+    Require all denied
+</FilesMatch>
+
+<Files "config.php">
+    Require all denied
+</Files>

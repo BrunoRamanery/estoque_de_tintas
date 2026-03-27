@@ -1,0 +1,26 @@
+/*
+========================================
+COMPONENTE: TOPO
+----------------------------------------
+Cabecalho principal das telas.
+========================================
+*/
+
+.topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.titulo-bloco h1,
+.form-topo h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #143d6b;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

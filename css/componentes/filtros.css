@@ -1,0 +1,66 @@
+/*
+========================================
+COMPONENTE: FILTROS
+----------------------------------------
+Area de pesquisa e filtros da tela principal.
+========================================
+*/
+
+.painel-filtros {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 14px;
+    background: #f8fbff;
+    border: 1px solid #dbe7f5;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 22px;
+}
+
+.campo-filtro {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.campo-busca {
+    min-width: 0;
+}
+
+.campo-filtro label {
+    font-weight: 700;
+    color: #1e3a5f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.campo-filtro input,
+.campo-filtro select,
+.campo input,
+.formulario-grid input {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    outline: none;
+    font-size: 0.95rem;
+    background: #fff;
+    transition: 0.2s ease;
+}
+
+.campo-filtro input:focus,
+.campo-filtro select:focus,
+.campo input:focus,
+.formulario-grid input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+}
+
+.acoes-filtros {
+    display: flex;
+    align-items: end;
+    gap: 10px;
+    flex-wrap: wrap;
+}

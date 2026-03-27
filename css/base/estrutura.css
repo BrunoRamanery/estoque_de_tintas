@@ -1,0 +1,56 @@
+/*
+========================================
+BASE: ESTRUTURA
+----------------------------------------
+Cuida do fundo da pagina, container principal
+textos comuns e blocos de estrutura.
+========================================
+*/
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #eef2f7, #dfe7f1);
+    color: #1f2937;
+    padding: 24px 16px;
+}
+
+body.tela-formulario {
+    background:
+        radial-gradient(circle at 10% 10%, rgba(14, 116, 144, 0.11), transparent 26%),
+        radial-gradient(circle at 90% 0%, rgba(37, 99, 235, 0.12), transparent 28%),
+        linear-gradient(145deg, #e7edf5, #d9e3f2);
+}
+
+.container {
+    width: 95%;
+    max-width: 1180px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.10);
+}
+
+.subtitulo {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 0.96rem;
+}
+
+.estado-vazio {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+}
+
+.estado-vazio i {
+    font-size: 2rem;
+    color: #94a3b8;
+    margin-bottom: 12px;
+}
+
+.estado-vazio h2 {
+    margin: 0 0 8px;
+    color: #334155;
+}

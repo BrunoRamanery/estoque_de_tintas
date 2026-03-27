@@ -1,0 +1,72 @@
+/*
+========================================
+COMPONENTE: CORES
+----------------------------------------
+Bolinha e badge das cores das tintas.
+========================================
+*/
+
+.coluna-cor {
+    text-align: center;
+}
+
+.coluna-cor .cor-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.badge-cor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+/* Cores reais das tintas */
+.cor-c {
+    background: #06b6d4;
+}
+
+.cor-m {
+    background: #ec4899;
+}
+
+.cor-y {
+    background: #facc15;
+    color: #000;
+}
+
+.cor-bk {
+    background: #111827;
+}
+
+.dot-cor {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.dot-c {
+    background: #06b6d4;
+}
+
+.dot-m {
+    background: #ec4899;
+}
+
+.dot-y {
+    background: #facc15;
+}
+
+.dot-bk {
+    background: #111827;
+}

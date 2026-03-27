@@ -1,0 +1,28 @@
+/*
+========================================
+ARQUIVO PRINCIPAL DE ESTILOS
+----------------------------------------
+Este arquivo importa os demais arquivos CSS
+para manter o projeto organizado.
+========================================
+*/
+
+@import url("./base/reiniciar.css");
+@import url("./base/estrutura.css");
+
+@import url("./componentes/topo.css");
+@import url("./componentes/botoes.css");
+@import url("./componentes/alertas.css");
+@import url("./componentes/filtros.css");
+@import url("./componentes/cards.css");
+@import url("./componentes/tabelas.css");
+@import url("./componentes/cores.css");
+@import url("./componentes/formularios.css");
+@import url("./componentes/status.css");
+
+@import url("./paginas/dashboard.css");
+@import url("./paginas/impressoras.css");
+@import url("./paginas/detalhes.css");
+@import url("./paginas/responsivo.css");
+@import url("./paginas/autenticacao.css");
+@import url("./componentes/topo_sistema.css");

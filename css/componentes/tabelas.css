@@ -1,0 +1,84 @@
+/*
+========================================
+COMPONENTE: TABELAS
+----------------------------------------
+Estilo das tabelas e alinhamento das colunas.
+========================================
+*/
+
+.tabela-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+}
+
+th {
+    background: #123f70;
+    color: #fff;
+    text-align: left;
+    padding: 14px 12px;
+    font-size: 0.95rem;
+}
+
+th i {
+    margin-right: 6px;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.94rem;
+    color: #334155;
+    vertical-align: middle;
+}
+
+tr:nth-child(even) td {
+    background: #f8fafc;
+}
+
+tr:hover td {
+    background: #eef6ff;
+}
+
+.vazio {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 18px;
+}
+
+/* Centralizacao basica das colunas numericas */
+.tabela-wrapper th:nth-child(3),
+.tabela-wrapper th:nth-child(4),
+.tabela-wrapper th:nth-child(5),
+.tabela-wrapper th:nth-child(6),
+.tabela-wrapper td:nth-child(4),
+.tabela-wrapper td:nth-child(5),
+.tabela-wrapper td:nth-child(6) {
+    text-align: center;
+}
+
+.tabela-wrapper td:nth-child(3),
+.tabela-wrapper th:nth-child(3) {
+    text-align: center;
+}
+
+.tabela-wrapper td:nth-child(3) {
+    white-space: nowrap;
+}
+
+.tabela-wrapper td:nth-child(3) .dot-cor {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.tabela-wrapper td:nth-child(3) .badge-cor {
+    vertical-align: middle;
+}

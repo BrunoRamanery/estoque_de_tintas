@@ -1,0 +1,154 @@
+/*
+========================================
+PAGINA: IMPRESSORAS
+----------------------------------------
+Layout da listagem de impressoras.
+========================================
+*/
+
+.pagina-impressoras {
+    display: grid;
+    gap: 18px;
+}
+
+.topo-impressoras {
+    margin-bottom: 0;
+}
+
+.impressoras-resumo {
+    margin-bottom: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.painel-filtros.painel-filtros-impressoras {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    margin-bottom: 0;
+}
+
+.painel-filtros.painel-filtros-impressoras .acoes-filtros {
+    justify-content: flex-end;
+}
+
+.grid-impressoras {
+    grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+}
+
+.card-impressora {
+    cursor: default;
+}
+
+.card-rodape-impressora p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.estado-vazio-impressora {
+    grid-column: 1 / -1;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    background: #ffffff;
+}
+
+.bloco-detalhes-impressora {
+    scroll-margin-top: 20px;
+    margin: 0;
+}
+
+.mini-metricas-impressora {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.mini-metrica-impressora {
+    background: #ffffff;
+    border: 1px solid #e5edf7;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.mini-metrica-impressora span {
+    display: block;
+    color: #64748b;
+    font-size: 0.84rem;
+    margin-bottom: 6px;
+}
+
+.mini-metrica-impressora strong {
+    color: #0f172a;
+    font-size: 1rem;
+}
+
+.observacao-impressora {
+    margin-top: 12px;
+    border: 1px solid #e5edf7;
+    border-radius: 12px;
+    padding: 12px;
+    background: #ffffff;
+}
+
+.observacao-impressora span {
+    display: block;
+    color: #64748b;
+    font-size: 0.84rem;
+    margin-bottom: 6px;
+}
+
+.observacao-impressora p {
+    margin: 0;
+    color: #334155;
+    line-height: 1.45;
+}
+
+.bloco-tabela-impressoras {
+    margin: 0;
+}
+
+.tabela-wrapper-impressoras table {
+    min-width: 900px;
+}
+
+.tabela-wrapper-impressoras .acoes-impressora {
+    justify-content: center;
+}
+
+@media (max-width: 900px) {
+    .impressoras-resumo {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-filtros.painel-filtros-impressoras {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-filtros.painel-filtros-impressoras .acoes-filtros {
+        justify-content: flex-start;
+    }
+
+    .mini-metricas-impressora {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .mini-metricas-impressora {
+        grid-template-columns: 1fr;
+    }
+
+    .painel-filtros.painel-filtros-impressoras .acoes-filtros .botao,
+    .painel-filtros.painel-filtros-impressoras .acoes-filtros a {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.acoes-impressora-card {
+    margin-top: 4px;
+    width: 100%;
+}
+
+.acoes-impressora-card .btn-acao {
+    justify-content: center;
+}

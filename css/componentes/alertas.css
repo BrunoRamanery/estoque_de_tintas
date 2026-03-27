@@ -1,0 +1,43 @@
+/* ===============================
+   ALERTAS (NOVO PADRÃO PROFISSIONAL)
+=============================== */
+
+.tag-alerta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+/* 🔴 CRÍTICO */
+.tag-vermelha {
+    background: #fff0f0;
+    color: #c53030;
+    border-color: #f0a6a6;
+}
+
+/* 🟠 URGENTE */
+.tag-laranja {
+    background: #fff4ec;
+    color: #c05621;
+    border-color: #f4b183;
+}
+
+/* 🟡 ATENÇÃO */
+.tag-amarela {
+    background: #fff9e6;
+    color: #b7791f;
+    border-color: #f3d37a;
+}
+
+/* 🔵 NORMAL */
+.tag-azul {
+    background: #edf4ff;
+    color: #2d63e8;
+    border-color: #bfd3ff;
+}

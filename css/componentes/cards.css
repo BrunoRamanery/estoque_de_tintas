@@ -1,0 +1,206 @@
+/*
+========================================
+COMPONENTE: CARDS
+----------------------------------------
+Cards dos modelos e cards de resumo/alerta.
+========================================
+*/
+
+.grid-modelos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 18px;
+}
+
+.card-modelo {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+    border: 1px solid #dbe7f5;
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    transition: 0.22s ease;
+}
+
+.card-modelo:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+    border-color: #bfdbfe;
+}
+
+.card-topo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.icone-modelo {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 1.2rem;
+}
+
+.card-topo h2 {
+    margin: 0 0 4px;
+    color: #143d6b;
+    font-size: 1.25rem;
+}
+
+.card-topo p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.card-infos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.mini-info {
+    background: #fff;
+    border: 1px solid #e5edf7;
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.mini-label {
+    display: block;
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.mini-info strong {
+    font-size: 1rem;
+    color: #0f172a;
+}
+
+.card-rodape {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e5edf7;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ver-detalhes {
+    color: #1d4ed8;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cards-resumo {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.card-resumo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid transparent;
+}
+
+.icone-resumo {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.card-resumo strong {
+    display: block;
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.card-resumo span {
+    display: block;
+    margin: 4px 0 0;
+    font-size: 0.92rem;
+}
+
+.card-vencida {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.card-vencida .icone-resumo {
+    background: #fee2e2;
+}
+
+.card-breve {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+.card-breve .icone-resumo {
+    background: #fef3c7;
+}
+
+.card-compra-urgente {
+    background: #fff7ed;
+    border-color: #fdba74;
+    color: #9a3412;
+}
+
+.card-compra-urgente .icone-resumo {
+    background: #ffedd5;
+}
+
+.card-compra-breve {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.card-compra-breve .icone-resumo {
+    background: #dbeafe;
+}
+/* ===============================
+   DESTAQUE DE MODELOS CRÍTICOS
+=============================== */
+
+/* tem alerta crítico */
+.card-modelo:has(.tag-vermelha) {
+    border: 1px solid #f0a6a6;
+    background: #fffafa;
+}
+
+/* tem alerta urgente */
+.card-modelo:has(.tag-laranja) {
+    border: 1px solid #f4b183;
+}
+
+/* leve animação */
+.card-modelo {
+    transition: 0.2s ease;
+}
+
+.card-modelo:hover {
+    transform: translateY(-3px);
+}
