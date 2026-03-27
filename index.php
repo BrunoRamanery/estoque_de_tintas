@@ -64,8 +64,14 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
 <!DOCTYPE html>
 <html lang="pt-BR">
 <?php require __DIR__ . '/includes/cabecalho.php'; ?>
-<body>
-    <?php require __DIR__ . '/includes/topo_sistema.php'; ?>
+<body class="tela-sistema">
+    <?php
+        $basePrefix = "";
+        $paginaAtual = "home";
+        $paginaTitulo = "Dashboard";
+        $paginaDescricao = "Controle visual do estoque, validade e impressoras";
+        require __DIR__ . "/includes/topo_sistema.php";
+    ?>
 
     <div class="container dashboard-clean">
         <div class="topo topo-dashboard-clean">
@@ -230,7 +236,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
                     </div>
                 </div>
                 <div class="grafico-canvas-wrap grafico-canvas-wrap-donut">
-                    <canvas id="graficoCores"></canvas>
+                    <canvas id="graficos"><canvas id="graficoCores"></canvas>
                 </div>
             </article>
 
@@ -571,6 +577,8 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
         desenharGraficoModelos();
         desenharGraficoAlertas();
     </script>
+    </div>
+</div>
 </body>
 </html>
 

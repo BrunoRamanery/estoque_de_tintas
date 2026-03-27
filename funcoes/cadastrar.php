@@ -42,7 +42,14 @@ $caminhoCss = '../css/principal.css';
 <!DOCTYPE html>
 <html lang="pt-BR">
 <?php require __DIR__ . '/../includes/cabecalho.php'; ?>
-<body class="tela-formulario">
+<body class="tela-sistema">
+    <?php
+        $basePrefix = "../";
+        $paginaAtual = "tintas";
+        $paginaTitulo = "Nova tinta";
+        $paginaDescricao = "Cadastre um novo item no estoque";
+        require __DIR__ . "/../includes/topo_sistema.php";
+    ?>
     <div class="container form-container">
         <div class="form-topo">
             <h1><i class="fa-solid fa-circle-plus"></i> Nova Tinta</h1>
@@ -101,5 +108,7 @@ $caminhoCss = '../css/principal.css';
             </div>
         </form>
     </div>
+    </div>
+</div>
 </body>
 </html>

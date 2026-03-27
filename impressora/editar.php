@@ -62,13 +62,19 @@ if ($buscaRetorno !== '') {
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Impressora</title>
-    <link rel="stylesheet" href="../css/principal.css">
-</head>
-<body class="tela-formulario">
+<?php
+$tituloPagina = 'Editar Impressora';
+$caminhoCss = "../css/principal.css";
+?>
+<?php require __DIR__ . "/../includes/cabecalho.php"; ?>
+<body class="tela-sistema">
+<?php
+    $basePrefix = "../";
+    $paginaAtual = "impressoras";
+    $paginaTitulo = "Editar impressora";
+    $paginaDescricao = "Atualize os dados da impressora selecionada";
+    require __DIR__ . "/../includes/topo_sistema.php";
+?>
 <div class="container form-container">
     <div class="form-topo">
         <h1>Editar Impressora</h1>
@@ -116,6 +122,8 @@ if ($buscaRetorno !== '') {
             <a href="<?= e($voltarUrl) ?>" class="btn-voltar">Voltar</a>
         </div>
     </form>
+</div>
+    </div>
 </div>
 </body>
 </html>

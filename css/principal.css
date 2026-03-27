@@ -11,6 +11,7 @@ para manter o projeto organizado.
 @import url("./base/estrutura.css");
 
 @import url("./componentes/topo.css");
+@import url("./componentes/layout_sistema.css");
 @import url("./componentes/botoes.css");
 @import url("./componentes/alertas.css");
 @import url("./componentes/filtros.css");

@@ -46,6 +46,7 @@ if (preg_match('/(^|[\/\\\\])principal\.css$/i', $hrefCss)) {
         $prefixo . 'base/reiniciar.css',
         $prefixo . 'base/estrutura.css',
         $prefixo . 'componentes/topo.css',
+        $prefixo . 'componentes/layout_sistema.css',
         $prefixo . 'componentes/topo_sistema.css',
         $prefixo . 'componentes/botoes.css',
         $prefixo . 'componentes/alertas.css',
@@ -67,7 +68,7 @@ if (preg_match('/(^|[\/\\\\])principal\.css$/i', $hrefCss)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($tituloPagina ?? 'Controle de Tintas') ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <?php foreach ($folhasCss as $folhaCss): ?>
         <link rel="stylesheet" href="<?= e($versionarHrefCss($folhaCss)) ?>">
     <?php endforeach; ?>

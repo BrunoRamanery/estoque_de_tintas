@@ -20,13 +20,19 @@ unset($_SESSION['impressora_form_old']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastrar Impressora</title>
-    <link rel="stylesheet" href="../css/principal.css">
-</head>
-<body class="tela-formulario">
+<?php
+$tituloPagina = 'Cadastrar Impressora';
+$caminhoCss = "../css/principal.css";
+?>
+<?php require __DIR__ . "/../includes/cabecalho.php"; ?>
+<body class="tela-sistema">
+<?php
+    $basePrefix = "../";
+    $paginaAtual = "impressoras";
+    $paginaTitulo = "Cadastrar impressora";
+    $paginaDescricao = "Adicione uma nova impressora ao sistema";
+    require __DIR__ . "/../includes/topo_sistema.php";
+?>
 <div class="container form-container">
     <div class="form-topo">
         <h1>Cadastrar Impressora</h1>
@@ -72,6 +78,8 @@ unset($_SESSION['impressora_form_old']);
             <a href="impressoras.php" class="btn-voltar">Voltar</a>
         </div>
     </form>
+</div>
+    </div>
 </div>
 </body>
 </html>

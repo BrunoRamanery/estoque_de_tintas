@@ -37,7 +37,14 @@ $caminhoCss = 'css/principal.css';
 <!DOCTYPE html>
 <html lang="pt-BR">
 <?php require __DIR__ . '/includes/cabecalho.php'; ?>
-<body>
+<body class="tela-sistema">
+<?php
+    $basePrefix = "";
+    $paginaAtual = "tintas";
+    $paginaTitulo = "Modelo " . $modelo;
+    $paginaDescricao = "Resumo e historico do modelo selecionado";
+    require __DIR__ . "/includes/topo_sistema.php";
+?>
 <div class="container detalhes-simples">
     <div class="topo">
         <h1><i class="fa-solid fa-box"></i> Modelo <?= e($modelo) ?></h1>
@@ -121,6 +128,8 @@ $caminhoCss = 'css/principal.css';
                 </tr>
             <?php endif; ?>
         </table>
+    </div>
+</div>
     </div>
 </div>
 </body>

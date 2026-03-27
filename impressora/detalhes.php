@@ -58,7 +58,14 @@ $caminhoCss = '../css/principal.css';
 <!DOCTYPE html>
 <html lang="pt-BR">
 <?php require __DIR__ . '/../includes/cabecalho.php'; ?>
-<body>
+<body class="tela-sistema">
+    <?php
+        $basePrefix = "../";
+        $paginaAtual = "impressoras";
+        $paginaTitulo = "Detalhes da impressora";
+        $paginaDescricao = "Visualize informacoes completas da impressora";
+        require __DIR__ . "/../includes/topo_sistema.php";
+    ?>
     <div class="container pagina-impressoras">
         <div class="topo topo-impressoras">
             <div class="titulo-bloco">
@@ -126,5 +133,7 @@ $caminhoCss = '../css/principal.css';
             </div>
         </section>
     </div>
+    </div>
+</div>
 </body>
 </html>

@@ -106,6 +106,13 @@ $csrfToken = obter_token_csrf();
                 </div>
             <?php endif; ?>
 
+            <?php if (isset($_GET['erro']) && $_GET['erro'] === 'limite'): ?>
+                <div class="auth-alerta auth-alerta-erro">
+                    <i class="fa-solid fa-clock"></i>
+                    Muitas tentativas. Aguarde alguns minutos e tente novamente.
+                </div>
+            <?php endif; ?>
+
             <?php if (!empty($mensagem)): ?>
                 <div class="auth-alerta <?= $mensagem['tipo'] === 'sucesso' ? 'auth-alerta-sucesso' : 'auth-alerta-erro' ?>">
                     <i class="fa-solid <?= $mensagem['tipo'] === 'sucesso' ? 'fa-circle-check' : 'fa-circle-xmark' ?>"></i>
