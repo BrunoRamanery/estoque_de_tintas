@@ -7,7 +7,7 @@
 
 function repo_impressoras_listar(mysqli $conn, string $busca = ''): array
 {
-    $sql = 'SELECT id, nome, modelo, ip, localizacao, observacao FROM impressoras';
+    $sql = 'SELECT id, nome, modelo, ip, localizacao, observacao, status_impressora, tinta_preto, tinta_ciano, tinta_magenta, tinta_amarelo FROM impressoras';
     $tipos = '';
     $parametros = [];
 
@@ -41,6 +41,11 @@ function repo_impressoras_listar(mysqli $conn, string $busca = ''): array
             'ip' => trim((string) ($row['ip'] ?? '')),
             'localizacao' => trim((string) ($row['localizacao'] ?? '')),
             'observacao' => trim((string) ($row['observacao'] ?? '')),
+            'status_impressora' => trim((string) ($row['status_impressora'] ?? '')),
+            'tinta_preto' => ($row['tinta_preto'] !== null && $row['tinta_preto'] !== '') ? (int) $row['tinta_preto'] : null,
+            'tinta_ciano' => ($row['tinta_ciano'] !== null && $row['tinta_ciano'] !== '') ? (int) $row['tinta_ciano'] : null,
+            'tinta_magenta' => ($row['tinta_magenta'] !== null && $row['tinta_magenta'] !== '') ? (int) $row['tinta_magenta'] : null,
+            'tinta_amarelo' => ($row['tinta_amarelo'] !== null && $row['tinta_amarelo'] !== '') ? (int) $row['tinta_amarelo'] : null,
         ];
     }
 
@@ -50,7 +55,7 @@ function repo_impressoras_listar(mysqli $conn, string $busca = ''): array
 
 function repo_impressoras_buscar_por_id(mysqli $conn, int $id): ?array
 {
-    $stmt = $conn->prepare('SELECT id, nome, modelo, ip, localizacao, observacao FROM impressoras WHERE id = ?');
+    $stmt = $conn->prepare('SELECT id, nome, modelo, ip, localizacao, observacao, status_impressora, tinta_preto, tinta_ciano, tinta_magenta, tinta_amarelo FROM impressoras WHERE id = ?');
     if (!$stmt) {
         throw new RuntimeException('Erro ao preparar detalhes da impressora.');
     }
@@ -72,6 +77,11 @@ function repo_impressoras_buscar_por_id(mysqli $conn, int $id): ?array
         'ip' => trim((string) ($row['ip'] ?? '')),
         'localizacao' => trim((string) ($row['localizacao'] ?? '')),
         'observacao' => trim((string) ($row['observacao'] ?? '')),
+        'status_impressora' => trim((string) ($row['status_impressora'] ?? '')),
+        'tinta_preto' => ($row['tinta_preto'] !== null && $row['tinta_preto'] !== '') ? (int) $row['tinta_preto'] : null,
+        'tinta_ciano' => ($row['tinta_ciano'] !== null && $row['tinta_ciano'] !== '') ? (int) $row['tinta_ciano'] : null,
+        'tinta_magenta' => ($row['tinta_magenta'] !== null && $row['tinta_magenta'] !== '') ? (int) $row['tinta_magenta'] : null,
+        'tinta_amarelo' => ($row['tinta_amarelo'] !== null && $row['tinta_amarelo'] !== '') ? (int) $row['tinta_amarelo'] : null,
     ];
 }
 

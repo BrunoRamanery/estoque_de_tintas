@@ -47,6 +47,68 @@ $montarLinkEditar = static function (int $id, string $buscaAtual) use ($montarQu
     return 'editar.php?' . $montarQueryComBusca($id, $buscaAtual);
 };
 
+$definicoesTintas = [
+    ['sigla' => 'BK', 'campo' => 'tinta_preto', 'cor' => '#0f172a'],
+    ['sigla' => 'C', 'campo' => 'tinta_ciano', 'cor' => '#00AEEF'],
+    ['sigla' => 'M', 'campo' => 'tinta_magenta', 'cor' => '#ED008C'],
+    ['sigla' => 'Y', 'campo' => 'tinta_amarelo', 'cor' => '#FFF200'],
+];
+
+$normalizarPercentualTinta = static function ($valor): ?int {
+    if ($valor === null || $valor === '') {
+        return null;
+    }
+
+    if (!is_numeric($valor)) {
+        return null;
+    }
+
+    $numero = (int) round((float) $valor);
+    if ($numero < 0) {
+        return 0;
+    }
+
+    if ($numero > 100) {
+        return 100;
+    }
+
+    return $numero;
+};
+
+$renderizarTanqueTinta = static function (string $sigla, ?int $percentual, string $corHex, string $contexto = 'card'): string {
+    $classeContexto = $contexto === 'tabela' ? 'tanque-tinta--tabela' : 'tanque-tinta--card';
+    $semDado = $percentual === null;
+    $altura = $semDado ? 0 : (int) max(0, min(100, $percentual));
+    $textoValor = $semDado ? 'N/D' : $altura . '%';
+
+    ob_start();
+    ?>
+    <div class="tanque-tinta <?= e($classeContexto) ?><?= $semDado ? ' tanque-tinta--vazio' : '' ?>">
+        <span class="tanque-tinta__sigla"><?= e($sigla) ?></span>
+        <div class="tanque-tinta__coluna" title="<?= e($sigla . ' ' . $textoValor) ?>">
+            <div class="tanque-tinta__preenchimento" style="height: <?= e((string) $altura) ?>%; background: <?= e($corHex) ?>;"></div>
+        </div>
+        <span class="tanque-tinta__valor"><?= e($textoValor) ?></span>
+    </div>
+    <?php
+    return (string) ob_get_clean();
+};
+
+$renderizarGrupoTintas = static function (array $impressora, string $contexto = 'card') use ($definicoesTintas, $normalizarPercentualTinta, $renderizarTanqueTinta): string {
+    ob_start();
+    ?>
+    <div class="tintas-epson tintas-epson--<?= e($contexto) ?>">
+        <?php foreach ($definicoesTintas as $definicao): ?>
+            <?php
+            $percentual = $normalizarPercentualTinta($impressora[$definicao['campo']] ?? null);
+            echo $renderizarTanqueTinta($definicao['sigla'], $percentual, $definicao['cor'], $contexto);
+            ?>
+        <?php endforeach; ?>
+    </div>
+    <?php
+    return (string) ob_get_clean();
+};
+
 $tituloPagina = 'Impressoras';
 $caminhoCss = '../css/principal.css';
 ?>
@@ -162,6 +224,11 @@ $caminhoCss = '../css/principal.css';
                             </div>
                         </div>
 
+                        <div class="bloco-tintas-card">
+                            <span class="mini-label">Niveis de tinta</span>
+                            <?= $renderizarGrupoTintas($impressora, 'card') ?>
+                        </div>
+
                         <div class="card-rodape card-rodape-impressora">
                             <span class="mini-label">Observacao</span>
                             <p><?= e($observacao) ?></p>
@@ -212,6 +279,7 @@ $caminhoCss = '../css/principal.css';
                             <th><i class="fa-solid fa-layer-group"></i> Modelo</th>
                             <th><i class="fa-solid fa-network-wired"></i> IP</th>
                             <th><i class="fa-solid fa-location-dot"></i> Localizacao</th>
+                            <th><i class="fa-solid fa-droplet"></i> Tintas</th>
                             <th><i class="fa-solid fa-note-sticky"></i> Observacao</th>
                             <th><i class="fa-solid fa-screwdriver-wrench"></i> Acoes</th>
                         </tr>
@@ -233,6 +301,7 @@ $caminhoCss = '../css/principal.css';
                                     <td><?= e($modelo) ?></td>
                                     <td><?= e($ip) ?></td>
                                     <td><?= e($localizacao) ?></td>
+                                    <td class="coluna-tintas-impressora"><?= $renderizarGrupoTintas($impressora, 'tabela') ?></td>
                                     <td><?= e($observacao) ?></td>
                                     <td class="acoes acoes-impressora">
                                         <a class="btn-acao btn-editar" href="<?= e($linkDetalhes) ?>">
@@ -254,7 +323,7 @@ $caminhoCss = '../css/principal.css';
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="vazio">Nenhuma impressora cadastrada no momento.</td>
+                                <td colspan="7" class="vazio">Nenhuma impressora cadastrada no momento.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

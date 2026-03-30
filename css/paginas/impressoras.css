@@ -106,10 +106,6 @@ Layout da listagem de impressoras.
     margin: 0;
 }
 
-.tabela-wrapper-impressoras table {
-    min-width: 900px;
-}
-
 .tabela-wrapper-impressoras .acoes-impressora {
     justify-content: center;
 }
@@ -151,4 +147,108 @@ Layout da listagem de impressoras.
 
 .acoes-impressora-card .btn-acao {
     justify-content: center;
+}
+
+/*
+========================================
+COMPONENTE: NIVEIS DE TINTA (ESTILO EPSON)
+----------------------------------------
+Barras verticais com preenchimento de baixo para cima.
+========================================
+*/
+
+.bloco-tintas-card {
+    margin-top: 10px;
+    border: 1px solid #e5edf7;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 10px 12px;
+}
+
+.tintas-epson {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+}
+
+.tintas-epson--card {
+    margin-top: 8px;
+}
+
+.tintas-epson--tabela {
+    justify-content: flex-start;
+}
+
+.tanque-tinta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.tanque-tinta__sigla {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #334155;
+    letter-spacing: 0.02em;
+}
+
+.tanque-tinta__coluna {
+    width: 20px;
+    height: 56px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.tanque-tinta__preenchimento {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 0;
+    border-radius: 0;
+}
+
+.tanque-tinta__valor {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #0f172a;
+    min-width: 34px;
+    text-align: center;
+}
+
+.tanque-tinta--vazio .tanque-tinta__coluna {
+    background: repeating-linear-gradient(
+        -45deg,
+        #f8fafc,
+        #f8fafc 6px,
+        #eef2f7 6px,
+        #eef2f7 12px
+    );
+}
+
+.tanque-tinta--vazio .tanque-tinta__valor {
+    color: #64748b;
+}
+
+.tanque-tinta--tabela .tanque-tinta__coluna {
+    height: 48px;
+    width: 18px;
+}
+
+.tanque-tinta--tabela .tanque-tinta__valor,
+.tanque-tinta--tabela .tanque-tinta__sigla {
+    font-size: 0.68rem;
+}
+
+.coluna-tintas-impressora {
+    min-width: 182px;
+}
+
+.tabela-wrapper-impressoras table {
+    min-width: 1040px;
 }
