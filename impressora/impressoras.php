@@ -69,7 +69,7 @@ $caminhoCss = '../css/principal.css';
             </div>
 
             <div class="acoes">
-                <a class="botao botao-secundario" href="../index.php">
+                <a class="botao botao-secundario" href="../tintas.php">
                     <i class="fa-solid fa-arrow-left"></i> Voltar
                 </a>
                 <a class="botao" href="cadastrar.php">

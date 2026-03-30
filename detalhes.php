@@ -9,7 +9,7 @@ $modelo = trim((string) ($_GET['modelo'] ?? ''));
 $busca = trim((string) ($_GET['busca'] ?? ''));
 
 if ($modelo === '') {
-    header('Location: index.php');
+    header('Location: tintas.php');
     exit;
 }
 
@@ -19,7 +19,7 @@ try {
     $conn->close();
     error_log('Falha ao carregar detalhes do modelo ' . $modelo . ': ' . $erro->getMessage());
     definir_mensagem_flash('erro', 'Nao foi possivel carregar os detalhes do modelo.');
-    header('Location: index.php');
+    header('Location: tintas.php');
     exit;
 }
 
@@ -48,7 +48,7 @@ $caminhoCss = 'css/principal.css';
 <div class="container detalhes-simples">
     <div class="topo">
         <h1><i class="fa-solid fa-box"></i> Modelo <?= e($modelo) ?></h1>
-        <a href="index.php" class="botao">Voltar</a>
+        <a href="tintas.php" class="botao">Voltar</a>
     </div>
 
     <div class="cards">

@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (RuntimeException $erro) {
         error_log('Falha ao cadastrar tinta: ' . $erro->getMessage());
         definir_mensagem_flash('erro', 'Erro interno ao cadastrar a tinta.');
-        header('Location: ../index.php');
+        header('Location: ../tintas.php');
         exit;
     }
 
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? 'Tinta adicionada e somada ao registro ja existente.'
             : 'Tinta cadastrada com sucesso.';
         definir_mensagem_flash($salvou ? 'sucesso' : 'erro', $salvou ? $mensagemSucesso : 'Erro ao salvar a tinta.');
-        header('Location: ../index.php');
+        header('Location: ../tintas.php');
         exit;
     }
 }
@@ -102,7 +102,7 @@ $caminhoCss = '../css/principal.css';
                     <i class="fa-solid fa-floppy-disk"></i> Salvar
                 </button>
 
-                <a href="../index.php" class="btn-voltar">
+                <a href="../tintas.php" class="btn-voltar">
                     <i class="fa-solid fa-arrow-left"></i> Voltar
                 </a>
             </div>

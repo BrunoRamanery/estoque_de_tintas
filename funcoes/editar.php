@@ -11,7 +11,7 @@ $retornoModelo = trim((string) ($_GET['retorno_modelo'] ?? $_POST['retorno_model
 $montarRedirecionamento = static function (string $modelo): string {
     return $modelo !== ''
         ? '../detalhes.php?modelo=' . urlencode($modelo)
-        : '../index.php';
+        : '../tintas.php';
 };
 
 $voltarUrl = $montarRedirecionamento($retornoModelo);
