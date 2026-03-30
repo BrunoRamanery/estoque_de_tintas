@@ -2,7 +2,7 @@
 require_once __DIR__ . '/app/utilidades.php';
 require_once __DIR__ . '/usuario/verificar_login.php';
 
-$tituloPagina = 'Home';
+$tituloPagina = 'Conta';
 $caminhoCss = 'css/principal.css';
 ?>
 <!DOCTYPE html>
@@ -11,18 +11,18 @@ $caminhoCss = 'css/principal.css';
 <body class="tela-sistema">
     <?php
         $basePrefix = "";
-        $paginaAtual = "home";
-        $paginaTitulo = "Home";
-        $paginaDescricao = "Pagina inicial do sistema";
+        $paginaAtual = "conta";
+        $paginaTitulo = "Conta";
+        $paginaDescricao = "Pagina da conta em desenvolvimento";
         require __DIR__ . "/includes/topo_sistema.php";
     ?>
 
     <div class="container dashboard-clean">
         <section class="bloco-vazio-pagina">
             <div class="bloco-vazio-pagina__conteudo">
-                <i class="fa-solid fa-hand-sparkles"></i>
-                <h1>Home</h1>
-                <p>Bem-vindo ao sistema de estoque de tintas.</p>
+                <i class="fa-solid fa-user"></i>
+                <h1>Conta</h1>
+                <p>Em desenvolvimento...</p>
             </div>
         </section>
     </div>

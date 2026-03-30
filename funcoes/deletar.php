@@ -10,7 +10,7 @@ require_once __DIR__ . '/../usuario/verificar_login.php';
 $retornoModelo = trim((string) ($_POST['retorno_modelo'] ?? $_GET['retorno_modelo'] ?? ''));
 $redirectUrl = $retornoModelo !== ''
     ? '../detalhes.php?modelo=' . urlencode($retornoModelo)
-    : '../index.php';
+    : '../tintas.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     definir_mensagem_flash('erro', 'Metodo nao permitido para exclusao.');

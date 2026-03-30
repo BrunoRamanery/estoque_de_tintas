@@ -22,25 +22,25 @@ $itensMenu = [
         'chave' => 'tintas',
         'label' => 'Tintas',
         'icone' => 'fa-solid fa-droplet',
-        'href' => $basePrefix . 'index.php',
+        'href' => $basePrefix . 'tintas.php',
     ],
     [
         'chave' => 'impressoras',
         'label' => 'Impressoras',
         'icone' => 'fa-solid fa-print',
-        'href' => $basePrefix . 'impressora/impressoras.php',
+        'href' => $basePrefix . 'impressoras.php',
     ],
     [
         'chave' => 'relatorios',
         'label' => 'Relatorios',
         'icone' => 'fa-solid fa-chart-column',
-        'href' => $basePrefix . 'index.php#graficos',
+        'href' => $basePrefix . 'relatorios.php',
     ],
     [
-        'chave' => 'ajustes',
+        'chave' => 'conta',
         'label' => 'Conta',
         'icone' => 'fa-solid fa-user-gear',
-        'href' => $basePrefix . 'usuario/cadastro_usuario.php',
+        'href' => $basePrefix . 'conta.php',
     ],
 ];
 ?>

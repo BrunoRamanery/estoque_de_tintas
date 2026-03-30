@@ -69,9 +69,6 @@ $caminhoCss = '../css/principal.css';
             </div>
 
             <div class="acoes">
-                <a class="botao botao-secundario" href="../index.php">
-                    <i class="fa-solid fa-arrow-left"></i> Voltar
-                </a>
                 <a class="botao" href="cadastrar.php">
                     <i class="fa-solid fa-plus"></i> Nova impressora
                 </a>
