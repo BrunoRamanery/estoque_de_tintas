@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/app/utilidades.php';
 require_once __DIR__ . '/servicos/tintas_servico.php';
 require_once __DIR__ . '/conexao.php';
@@ -45,11 +45,13 @@ try {
 
 $conn->close();
 
+$filtroAtivo = $dadosDashboard['filtro_ativo'];
 $modelos = $dadosDashboard['modelos'];
 $opcoesModelos = $dadosDashboard['opcoes_modelos'];
 $opcoesCores = $dadosDashboard['opcoes_cores'];
 $resumo = $dadosDashboard['resumo'];
 $listaCompras = $dadosDashboard['lista_compras'];
+$totalModelosEncontrados = $dadosDashboard['total_modelos_encontrados'];
 $quantidadeTotalFiltrada = $dadosDashboard['quantidade_total_filtrada'];
 $graficoCores = $dadosDashboard['grafico_cores'];
 $graficoModelos = $dadosDashboard['grafico_modelos'];
@@ -75,11 +77,14 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
         <div class="topo topo-dashboard-clean">
             <div class="titulo-bloco">
                 <h1><i class="fa-solid fa-droplet"></i> Controle de Tintas Epson</h1>
-                <p class="subtitulo">Uma visao rapida e simples para encontrar o que precisa, sem poluir a tela.</p>
+                <p class="subtitulo">Uma visão rápida e simples para encontrar o que precisa, sem poluir a tela.</p>
             </div>
 
             <a class="botao" href="funcoes/cadastrar.php">
                 <i class="fa-solid fa-plus"></i> Nova Tinta
+            </a>
+            <a href="impressora/impressoras.php" class="botao-menu">
+                <i class="fa-solid fa-print"></i> Impressoras
             </a>
         </div>
 
@@ -119,94 +124,115 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
             </div>
         </section>
 
-        <section class="bloco-filtros-clean">
-            <form method="GET" class="painel-filtros painel-filtros-tintas">
-                <div class="filtros-principais">
-                    <div class="campo-filtro campo-busca">
-                        <label for="busca">
-                            <i class="fa-solid fa-magnifying-glass"></i> Buscar tinta
-                        </label>
-                        <input
-                            id="busca"
-                            type="text"
-                            name="busca"
-                            placeholder="Digite modelo, cor ou impressora"
-                            value="<?= e($filtros['busca']) ?>"
-                        >
-                    </div>
-
-                    <div class="acoes-filtros">
-                        <button type="submit" class="botao botao-filtro">
-                            <i class="fa-solid fa-filter"></i> Pesquisar
-                        </button>
-
-                        <a href="tintas.php" class="botao botao-filtro">
-                            <i class="fa-solid fa-rotate-left"></i> Limpar
-                        </a>
-                    </div>
-                </div>
-
-                <div class="filtros-avancados">
-                    <div class="campo-filtro">
-                        <label for="modelo">
-                            <i class="fa-solid fa-box"></i> Modelo
-                        </label>
-                        <select id="modelo" name="modelo">
-                            <option value="">Todos</option>
-                            <?php foreach ($opcoesModelos as $modelo): ?>
-                                <option value="<?= e($modelo) ?>" <?= $filtros['modelo'] === $modelo ? 'selected' : '' ?>>
-                                    <?= e($modelo) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="campo-filtro">
-                        <label for="cor">
-                            <i class="fa-solid fa-palette"></i> Cor
-                        </label>
-                        <select id="cor" name="cor">
-                            <option value="">Todas</option>
-                            <?php foreach ($opcoesCores as $cor): ?>
-                                <option value="<?= e($cor) ?>" <?= $filtros['cor'] === $cor ? 'selected' : '' ?>>
-                                    <?= e(strtoupper($cor)) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="campo-filtro">
-                        <label for="status_validade">
-                            <i class="fa-solid fa-calendar-xmark"></i> Validade
-                        </label>
-                        <select id="status_validade" name="status_validade">
-                            <option value="">Todas</option>
-                            <option value="valida" <?= $filtros['status_validade'] === 'valida' ? 'selected' : '' ?>>Valida</option>
-                            <option value="proxima" <?= $filtros['status_validade'] === 'proxima' ? 'selected' : '' ?>>Vence em breve</option>
-                            <option value="vencida" <?= $filtros['status_validade'] === 'vencida' ? 'selected' : '' ?>>Vencida</option>
-                        </select>
-                    </div>
-
-                    <div class="campo-filtro">
-                        <label for="status_compra">
-                            <i class="fa-solid fa-cart-shopping"></i> Compra
-                        </label>
-                        <select id="status_compra" name="status_compra">
-                            <option value="">Todas</option>
-                            <option value="ok" <?= $filtros['status_compra'] === 'ok' ? 'selected' : '' ?>>Estoque ok</option>
-                            <option value="baixo" <?= $filtros['status_compra'] === 'baixo' ? 'selected' : '' ?>>Comprar em breve</option>
-                            <option value="urgente" <?= $filtros['status_compra'] === 'urgente' ? 'selected' : '' ?>>Compra urgente</option>
-                        </select>
-                    </div>
-                </div>
-            </form>
+        <section class="cards-menu">
+            <div class="card-menu">
+                <h3><i class="fa-solid fa-print"></i> Impressoras</h3>
+                <p>Gerenciar impressoras e níveis de tinta</p>
+                <a href="impressora/impressoras.php" class="btn-entrar">
+                    <i class="fa-solid fa-arrow-right"></i> Acessar
+                </a>
+            </div>
         </section>
-        <section class="graficos-dashboard">
+
+        <form method="GET" class="painel-filtros painel-filtros-index">
+            <div class="campo-filtro campo-busca">
+                <label for="busca">
+                    <i class="fa-solid fa-magnifying-glass"></i> Pesquisa
+                </label>
+                <input
+                    id="busca"
+                    type="text"
+                    name="busca"
+                    placeholder="Pesquisar por impressora, modelo ou cor"
+                    value="<?= e($filtros['busca']) ?>"
+                >
+            </div>
+
+            <div class="campo-filtro">
+                <label for="modelo">
+                    <i class="fa-solid fa-box"></i> Modelo
+                </label>
+                <select id="modelo" name="modelo">
+                    <option value="">Todos</option>
+                    <?php foreach ($opcoesModelos as $modelo): ?>
+                        <option value="<?= e($modelo) ?>" <?= $filtros['modelo'] === $modelo ? 'selected' : '' ?>>
+                            <?= e($modelo) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="campo-filtro">
+                <label for="cor">
+                    <i class="fa-solid fa-palette"></i> Cor
+                </label>
+                <select id="cor" name="cor">
+                    <option value="">Todas</option>
+                    <?php foreach ($opcoesCores as $cor): ?>
+                        <option value="<?= e($cor) ?>" <?= $filtros['cor'] === $cor ? 'selected' : '' ?>>
+                            <?= e(strtoupper($cor)) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="campo-filtro">
+                <label for="status_validade">
+                    <i class="fa-solid fa-calendar-xmark"></i> Validade
+                </label>
+                <select id="status_validade" name="status_validade">
+                    <option value="">Todas</option>
+                    <option value="valida" <?= $filtros['status_validade'] === 'valida' ? 'selected' : '' ?>>Válida</option>
+                    <option value="proxima" <?= $filtros['status_validade'] === 'proxima' ? 'selected' : '' ?>>Vence em breve</option>
+                    <option value="vencida" <?= $filtros['status_validade'] === 'vencida' ? 'selected' : '' ?>>Vencida</option>
+                </select>
+            </div>
+
+            <div class="campo-filtro">
+                <label for="status_compra">
+                    <i class="fa-solid fa-cart-shopping"></i> Compra
+                </label>
+                <select id="status_compra" name="status_compra">
+                    <option value="">Todas</option>
+                    <option value="ok" <?= $filtros['status_compra'] === 'ok' ? 'selected' : '' ?>>Estoque ok</option>
+                    <option value="baixo" <?= $filtros['status_compra'] === 'baixo' ? 'selected' : '' ?>>Comprar em breve</option>
+                    <option value="urgente" <?= $filtros['status_compra'] === 'urgente' ? 'selected' : '' ?>>Compra urgente</option>
+                </select>
+            </div>
+
+            <div class="acoes-filtros">
+                <button type="submit" class="botao botao-filtro">
+                    <i class="fa-solid fa-filter"></i> Pesquisar
+                </button>
+
+                <a href="tintas.php" class="botao botao-filtro">
+                    <i class="fa-solid fa-rotate-left"></i> Limpar
+                </a>
+            </div>
+        </form>
+
+        <section class="resumo-mastigado">
+            <div class="resumo-mastigado__icone">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+                <h2>Leitura rápida</h2>
+                <p>
+                    <?php if (!empty($resumoMastigado)): ?>
+                        <?= e(implode(' • ', $resumoMastigado)) ?>.
+                    <?php else: ?>
+                        Use os filtros para encontrar rapidamente o que você precisa.
+                    <?php endif; ?>
+                </p>
+            </div>
+        </section>
+
+        <section id="graficos" class="graficos-dashboard">
             <article class="grafico-card grafico-card-donut">
                 <div class="secao-titulo secao-titulo-clean">
                     <div>
                         <h2><i class="fa-solid fa-chart-pie"></i> Estoque por cor</h2>
-                        <p>Mostra a distribuicao das quantidades filtradas.</p>
+                        <p>Mostra a distribuição das quantidades filtradas.</p>
                     </div>
                 </div>
                 <div class="grafico-canvas-wrap grafico-canvas-wrap-donut">
@@ -230,13 +256,32 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <div class="secao-titulo secao-titulo-clean">
                     <div>
                         <h2><i class="fa-solid fa-chart-bar"></i> Alertas por modelo</h2>
-                        <p>Leitura visual do que pede atencao primeiro.</p>
+                        <p>Leitura visual do que pede atenção primeiro.</p>
                     </div>
                 </div>
                 <div class="grafico-canvas-wrap grafico-canvas-wrap-alertas">
                     <canvas id="graficoAlertas"></canvas>
                 </div>
             </article>
+        </section>
+
+        <section class="bloco-detalhes bloco-resultado-filtro bloco-resultado-filtro-clean">
+            <div class="bloco-detalhes-topo">
+                <div class="icone-bloco">
+                    <i class="fa-solid fa-list-check"></i>
+                </div>
+                <div>
+                    <h2>Modelos</h2>
+                    <p>
+                        <?= e($totalModelosEncontrados) ?> modelo(s)
+                        <?php if ($filtroAtivo): ?>
+                            encontrados com os filtros aplicados.
+                        <?php else: ?>
+                            disponíveis no sistema.
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
         </section>
 
         <?php if (!empty($modelos)): ?>
@@ -246,7 +291,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
                         <div class="card-modelo-clean__topo">
                             <div>
                                 <h2>Modelo <?= e($itemModelo['modelo']) ?></h2>
-                                <p>Toque para ver os lotes, validades e acoes.</p>
+                                <p>Toque para ver os lotes, validades e ações.</p>
                             </div>
 
                             <span class="status-pill <?= e($itemModelo['status_modelo']['classe']) ?>">
@@ -282,7 +327,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
                                 <?php else: ?>
                                     <span class="tag-alerta tag-azul">
                                         <i class="fa-solid fa-circle-check"></i>
-                                        Sem alertas criticos
+                                        Sem alertas críticos
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -306,7 +351,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
             <div class="secao-titulo secao-titulo-clean">
                 <div>
                     <h2><i class="fa-solid fa-cart-shopping"></i> Lista de compras sugerida</h2>
-                    <p>Ordenada por prioridade para o usuario bater o olho e agir.</p>
+                    <p>Ordenada por prioridade para o usuário bater o olho e agir.</p>
                 </div>
             </div>
 
@@ -345,7 +390,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
                 <div class="estado-vazio">
                     <i class="fa-solid fa-cart-shopping"></i>
                     <h2>Nenhum item para exibir</h2>
-                    <p>A lista de compras nao possui itens com os filtros atuais.</p>
+                    <p>A lista de compras não possui itens com os filtros atuais.</p>
                 </div>
             <?php endif; ?>
         </div>
@@ -536,5 +581,3 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
 </div>
 </body>
 </html>
-
-
