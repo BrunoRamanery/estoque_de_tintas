@@ -1,16 +1,50 @@
 <?php
 /**
  * Sincroniza todas as impressoras cadastradas.
+ *
+ * Fluxo principal (POST): processa e redireciona para impressoras.php com mensagem flash.
+ * Fluxo opcional (GET ?relatorio=1): exibe relatorio tecnico em tela.
  */
+require_once __DIR__ . '/../app/utilidades.php';
+require_once __DIR__ . '/../usuario/verificar_login.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/sincronizacao_helper.php';
 
 @set_time_limit(0);
 
+$modoRelatorio = isset($_GET['relatorio']) && (string) $_GET['relatorio'] === '1';
+$retornoBusca = trim((string) ($_POST['retorno_busca'] ?? $_GET['busca'] ?? ''));
+
+if (!$modoRelatorio) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        definir_mensagem_flash('erro', 'Metodo nao permitido para sincronizacao em lote.');
+        $url = 'impressoras.php';
+        if ($retornoBusca !== '') {
+            $url .= '?' . http_build_query(['busca' => $retornoBusca]);
+        }
+        $conn->close();
+        header('Location: ' . $url);
+        exit;
+    }
+
+    validar_csrf_ou_encerrar((string) ($_POST['csrf_token'] ?? ''));
+}
+
 $consulta = $conn->query('SELECT id, nome, modelo, ip FROM impressoras ORDER BY nome ASC, id ASC');
 if (!$consulta) {
+    if ($modoRelatorio) {
+        $conn->close();
+        exit('Falha ao listar impressoras para sincronizacao.');
+    }
+
+    definir_mensagem_flash('erro', 'Falha ao listar impressoras para sincronizacao.');
+    $url = 'impressoras.php';
+    if ($retornoBusca !== '') {
+        $url .= '?' . http_build_query(['busca' => $retornoBusca]);
+    }
     $conn->close();
-    exit('Falha ao listar impressoras para sincronizacao.');
+    header('Location: ' . $url);
+    exit;
 }
 
 $impressoras = [];
@@ -55,9 +89,29 @@ foreach ($impressoras as $impressora) {
     } else {
         $totalFalha++;
     }
+
+    // Pequeno intervalo para evitar estouro de conexoes em sequencia.
+    usleep(150000);
 }
 
 $conn->close();
+
+if (!$modoRelatorio) {
+    if ($totalFalha === 0) {
+        definir_mensagem_flash('sucesso', 'Sincronizacao concluida com sucesso. ' . $totalSucesso . ' impressora(s) atualizada(s).');
+    } elseif ($totalSucesso === 0) {
+        definir_mensagem_flash('erro', 'Sincronizacao concluida com falhas. Nenhuma impressora foi atualizada.');
+    } else {
+        definir_mensagem_flash('erro', 'Sincronizacao concluida com alertas. Sucesso: ' . $totalSucesso . ' | Falhas: ' . $totalFalha . '.');
+    }
+
+    $url = 'impressoras.php';
+    if ($retornoBusca !== '') {
+        $url .= '?' . http_build_query(['busca' => $retornoBusca]);
+    }
+    header('Location: ' . $url);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -76,6 +130,8 @@ $conn->close();
         .ok { color: #166534; font-weight: 700; }
         .erro { color: #b91c1c; font-weight: 700; }
         .muted { color: #64748b; }
+        .acoes { margin-top: 18px; }
+        .acoes a { color: #1d4ed8; text-decoration: none; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -128,5 +184,9 @@ $conn->close();
             <?php endif; ?>
         </tbody>
     </table>
+
+    <div class="acoes">
+        <a href="impressoras.php">Voltar para impressoras</a>
+    </div>
 </body>
 </html>

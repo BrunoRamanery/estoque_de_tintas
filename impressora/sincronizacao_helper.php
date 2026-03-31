@@ -207,25 +207,17 @@ function detectarColunaUltimaAtualizacao(mysqli $conn): ?string
     return $encontrou ? 'ultima_atualizacao' : null;
 }
 
-function montarUrlInfoImpressora(string $ip): string
+function montarUrlInfoImpressora(string $ip, string $protocolo = 'https'): string
 {
-    return 'https://' . $ip . '/PRESENTATION/ADVANCED/INFO_PRTINFO/TOP';
+    $protocoloNormalizado = strtolower(trim($protocolo)) === 'http' ? 'http' : 'https';
+    return $protocoloNormalizado . '://' . $ip . '/PRESENTATION/ADVANCED/INFO_PRTINFO/TOP';
 }
 
-function buscarHtmlInfoImpressora(string $ip): array
+function executarRequisicaoImpressora(string $url): array
 {
-    if (!function_exists('curl_init')) {
-        return [
-            'url' => montarUrlInfoImpressora($ip),
-            'html' => null,
-            'erro' => 'Extensao cURL nao disponivel no PHP.',
-            'http' => 0,
-        ];
-    }
-
-    $url = montarUrlInfoImpressora($ip);
     $ch = curl_init($url);
     curl_setopt_array($ch, [
+        // Base usada no sincronizar individual
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
@@ -233,6 +225,11 @@ function buscarHtmlInfoImpressora(string $ip): array
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT => 10,
         CURLOPT_USERAGENT => 'Mozilla/5.0',
+        // Ajustes para reduzir erro de socket no processamento em lote
+        CURLOPT_FRESH_CONNECT => true,
+        CURLOPT_FORBID_REUSE => true,
+        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+        CURLOPT_PROXY => '',
     ]);
 
     $html = curl_exec($ch);
@@ -246,6 +243,59 @@ function buscarHtmlInfoImpressora(string $ip): array
         'erro' => (string) $erro,
         'http' => (int) $httpCode,
     ];
+}
+
+function deveTentarFallbackHttp(array $resposta): bool
+{
+    if (($resposta['html'] ?? null) !== null && (int) ($resposta['http'] ?? 0) > 0) {
+        return false;
+    }
+
+    $erro = strtolower((string) ($resposta['erro'] ?? ''));
+    if ($erro === '') {
+        return (int) ($resposta['http'] ?? 0) === 0;
+    }
+
+    return str_contains($erro, 'failed to connect')
+        || str_contains($erro, 'timed out')
+        || str_contains($erro, 'ssl')
+        || str_contains($erro, 'bad access');
+}
+
+function buscarHtmlInfoImpressora(string $ip): array
+{
+    if (!function_exists('curl_init')) {
+        return [
+            'url' => montarUrlInfoImpressora($ip, 'https'),
+            'html' => null,
+            'erro' => 'Extensao cURL nao disponivel no PHP.',
+            'http' => 0,
+        ];
+    }
+
+    $tentativaHttps = executarRequisicaoImpressora(montarUrlInfoImpressora($ip, 'https'));
+    if (($tentativaHttps['erro'] ?? '') === '' && ($tentativaHttps['html'] ?? null) !== null) {
+        return $tentativaHttps;
+    }
+
+    if (!deveTentarFallbackHttp($tentativaHttps)) {
+        return $tentativaHttps;
+    }
+
+    $tentativaHttp = executarRequisicaoImpressora(montarUrlInfoImpressora($ip, 'http'));
+    if (($tentativaHttp['erro'] ?? '') === '' && ($tentativaHttp['html'] ?? null) !== null) {
+        return $tentativaHttp;
+    }
+
+    $erroHttps = trim((string) ($tentativaHttps['erro'] ?? ''));
+    $erroHttp = trim((string) ($tentativaHttp['erro'] ?? ''));
+    if ($erroHttps !== '' && $erroHttp !== '') {
+        $tentativaHttp['erro'] = 'HTTPS: ' . $erroHttps . ' | HTTP: ' . $erroHttp;
+    } elseif ($erroHttps !== '' && $erroHttp === '') {
+        $tentativaHttp['erro'] = 'HTTPS: ' . $erroHttps;
+    }
+
+    return $tentativaHttp;
 }
 
 function atualizarDadosImpressora(

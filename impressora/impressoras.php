@@ -131,6 +131,13 @@ $caminhoCss = '../css/principal.css';
             </div>
 
             <div class="acoes">
+                <form method="POST" action="sincronizar_todas.php" class="form-sincronizar-impressoras">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
+                    <input type="hidden" name="retorno_busca" value="<?= e($busca) ?>">
+                    <button type="submit" class="botao botao-sincronizar">
+                        <i class="fa-solid fa-arrows-rotate"></i> Sincronizar impressoras
+                    </button>
+                </form>
                 <a class="botao" href="cadastrar.php">
                     <i class="fa-solid fa-plus"></i> Nova impressora
                 </a>
