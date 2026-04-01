@@ -1,0 +1,119 @@
+======================================================================
+Data/Hora: 2026-04-01 19:19:15
+IP teste: 192.168.7.249
+URL: http://192.168.7.249/PRESENTATION/ADVANCED/STATUS/USAGE
+Acesso URL: NAO
+Erro file_get_contents: file_get_contents(http://192.168.7.249/PRESENTATION/ADVANCED/STATUS/USAGE): Failed to open stream: Foi feita uma tentativa de acesso a um soquete de uma maneira que é proibida pelas permissões de acesso
+======================================================================
+Data/Hora: 2026-04-01 19:20:08
+IP teste: 192.168.7.249
+URL: http://192.168.7.249/PRESENTATION/ADVANCED/STATUS/USAGE
+Acesso URL: NAO
+Erro file_get_contents: file_get_contents(http://192.168.7.249/PRESENTATION/ADVANCED/STATUS/USAGE): Failed to open stream: operation failed
+======================================================================
+Data/Hora: 2026-04-01 19:23:11
+IP teste: 192.168.7.249
+URL: http://192.168.7.249/PRESENTATION/ADVANCED/STATUS/USAGE
+Acesso URL: NAO
+HTTP code: 0
+Erro cURL: Failed to connect to 192.168.7.249 port 80: Bad access
+Retorno (500 primeiros chars):
+
+======================================================================
+Data/Hora: 2026-04-01 19:38:49
+IP teste: 192.168.7.249
+URL: http://192.168.7.249/PRESENTATION/ADVANCED/STATUS/USAGE
+Acesso URL: SIM
+HTTP code: 200
+Erro cURL: nenhum
+Retorno (500 primeiros chars):
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN
+"http://www.w3.org/TR/html4/strict.dtd"><html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="Author" content="SEIKO EPSON">
+<meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<SCRIPT type="text/javascript">
+<!--
+setTimeout("link()", 20);
+function link(
+HTML salvo em: C:\xampp\htdocs\estoque_de_tintas\impressora/../logs/debug_uso_l5590.html
+preg_match total (bruto): array (
+)
+preg_match pb (bruto): array (
+)
+preg_match cor (bruto): array (
+)
+======================================================================
+Data/Hora: 2026-04-01 21:11:08
+IP teste: 192.168.7.249
+URL: https://192.168.7.249/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP
+Acesso URL: NAO
+HTTP code: 0
+Erro cURL: Failed to connect to 192.168.7.249 port 443: Bad access
+Retorno (500 primeiros chars):
+
+======================================================================
+Data/Hora: 2026-04-01 21:13:27
+IP teste: 192.168.7.249
+URL: https://192.168.7.249/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP
+Acesso URL: SIM
+HTTP code: 200
+Erro cURL: nenhum
+Retorno (500 primeiros chars):
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN "
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="Author" content="SEIKO EPSON">
+<meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>L5590 Series</title><link rel='stylesheet' type='text/css' href='../C
+HTML salvo em: C:\xampp\htdocs\estoque_de_tintas\impressora/../logs/debug_uso_l5590.html
+preg_match total (bruto): array (
+  0 => 'Número total de páginas&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">19052</div>',
+  1 => '19052',
+)
+preg_match pb (bruto): array (
+  0 => 'Número total de páginas a P&amp;B&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">2801</div>',
+  1 => '2801',
+)
+preg_match cor (bruto): array (
+  0 => 'Número total de páginas a Cor&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">16251</div>',
+  1 => '16251',
+)
+======================================================================
+Data/Hora: 2026-04-01 21:45:10
+IP teste: 192.168.7.249
+URL: https://192.168.7.249/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP
+Acesso URL: SIM
+HTTP code: 200
+Erro cURL: nenhum
+Retorno (500 primeiros chars):
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN "
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="Author" content="SEIKO EPSON">
+<meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>L5590 Series</title><link rel='stylesheet' type='text/css' href='../C
+HTML salvo em: C:\xampp\htdocs\estoque_de_tintas\impressora/../logs/debug_uso_l5590.html
+preg_match total (bruto): array (
+  0 => 'Número total de páginas&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">19052</div>',
+  1 => '19052',
+)
+preg_match pb (bruto): array (
+  0 => 'Número total de páginas a P&amp;B&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">2801</div>',
+  1 => '2801',
+)
+preg_match cor (bruto): array (
+  0 => 'Número total de páginas a Cor&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">16251</div>',
+  1 => '16251',
+)

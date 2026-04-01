@@ -298,6 +298,120 @@ function buscarHtmlInfoImpressora(string $ip): array
     return $tentativaHttp;
 }
 
+function buscarUsoImpressora($ip)
+{
+    $url = "https://$ip/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP";
+    $debugAtivo = trim((string) $ip) === '192.168.7.249';
+    $diretorioLogs = __DIR__ . '/../logs';
+    $arquivoLog = $diretorioLogs . '/debug_uso_l5590.log';
+    $arquivoHtml = $diretorioLogs . '/debug_uso_l5590.html';
+
+    $gravarDebug = static function (string $linha) use ($debugAtivo, $diretorioLogs, $arquivoLog): void {
+        if (!$debugAtivo) {
+            return;
+        }
+
+        if (!is_dir($diretorioLogs) && !mkdir($diretorioLogs, 0775, true) && !is_dir($diretorioLogs)) {
+            return;
+        }
+
+        @file_put_contents($arquivoLog, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+    };
+
+    if ($debugAtivo) {
+        $gravarDebug(str_repeat('=', 70));
+        $gravarDebug('Data/Hora: ' . date('Y-m-d H:i:s'));
+        $gravarDebug('IP teste: ' . (string) $ip);
+        $gravarDebug('URL: ' . $url);
+    }
+
+    if (!function_exists('curl_init')) {
+        $gravarDebug('Acesso URL: NAO');
+        $gravarDebug('Erro cURL: extensao cURL nao disponivel no PHP.');
+        return null;
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+    ]);
+
+    $html = curl_exec($ch);
+    $erroCurl = curl_error($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $conteudoRetornado = $html === false || $html === null ? '' : (string) $html;
+    $acessoOk = $conteudoRetornado !== '' && $erroCurl === '';
+
+    $gravarDebug('Acesso URL: ' . ($acessoOk ? 'SIM' : 'NAO'));
+    $gravarDebug('HTTP code: ' . $httpCode);
+    $gravarDebug('Erro cURL: ' . ($erroCurl !== '' ? $erroCurl : 'nenhum'));
+    $gravarDebug('Retorno (500 primeiros chars):');
+    $gravarDebug(substr($conteudoRetornado, 0, 500));
+
+    if ($conteudoRetornado !== '' && $debugAtivo) {
+        if (!is_dir($diretorioLogs) && !mkdir($diretorioLogs, 0775, true) && !is_dir($diretorioLogs)) {
+            $gravarDebug('Falha ao criar pasta de logs para salvar HTML.');
+        } else {
+            @file_put_contents($arquivoHtml, $conteudoRetornado);
+            $gravarDebug('HTML salvo em: ' . $arquivoHtml);
+        }
+    }
+
+    if ($erroCurl !== '' || $conteudoRetornado === '' || $httpCode >= 400 || $httpCode === 0) {
+        return null;
+    }
+
+    $total = [];
+    $pb = [];
+    $cor = [];
+
+    // Tentativa 1: busca por rotulos da area "Informacoes da impressao".
+    $padraoTotal = '/N(?:ú|Ãº|u)mero\s+total\s+de\s+p(?:á|Ã¡|a)ginas(?:\s|&nbsp;)*:\s*<\/span>\s*<\/dt>\s*<dd\b[^>]*>.*?<div\b[^>]*>\s*(\d+)\s*<\/div>/isu';
+    $padraoPb = '/N(?:ú|Ãº|u)mero\s+total\s+de\s+p(?:á|Ã¡|a)ginas\s+a\s+P(?:&amp;|&)B(?:\s|&nbsp;)*:\s*<\/span>\s*<\/dt>\s*<dd\b[^>]*>.*?<div\b[^>]*>\s*(\d+)\s*<\/div>/isu';
+    $padraoCor = '/N(?:ú|Ãº|u)mero\s+total\s+de\s+p(?:á|Ã¡|a)ginas\s+a\s+Cor(?:\s|&nbsp;)*:\s*<\/span>\s*<\/dt>\s*<dd\b[^>]*>.*?<div\b[^>]*>\s*(\d+)\s*<\/div>/isu';
+
+    preg_match($padraoTotal, $conteudoRetornado, $total);
+    preg_match($padraoPb, $conteudoRetornado, $pb);
+    preg_match($padraoCor, $conteudoRetornado, $cor);
+
+    // Tentativa 2 (fallback): primeiro fieldset de "Informacoes da impressao",
+    // considerando os tres primeiros valores como total, PB e cor.
+    if (!isset($total[1]) || !isset($pb[1]) || !isset($cor[1])) {
+        if (preg_match('/<legend>\s*Informa(?:ç|Ã§|c)oes?\s+da\s+impress(?:ã|Ã£|a)o\s*<\/legend>(.*?)<\/fieldset>/isu', $conteudoRetornado, $blocoInfo)) {
+            $valores = [];
+            preg_match_all('/<dd\b[^>]*>\s*<div\b[^>]*class=(["\'])[^"\']*\bpreserve-white-space\b[^"\']*\1[^>]*>\s*(\d+)\s*<\/div>\s*<\/dd>/isu', (string) ($blocoInfo[1] ?? ''), $valores, PREG_SET_ORDER);
+            if (!isset($total[1]) && isset($valores[0][2])) {
+                $total[1] = $valores[0][2];
+            }
+            if (!isset($pb[1]) && isset($valores[1][2])) {
+                $pb[1] = $valores[1][2];
+            }
+            if (!isset($cor[1]) && isset($valores[2][2])) {
+                $cor[1] = $valores[2][2];
+            }
+        }
+    }
+
+    if ($debugAtivo) {
+        $gravarDebug('preg_match total (bruto): ' . var_export($total, true));
+        $gravarDebug('preg_match pb (bruto): ' . var_export($pb, true));
+        $gravarDebug('preg_match cor (bruto): ' . var_export($cor, true));
+    }
+
+    return [
+        'total' => isset($total[1]) ? (int) $total[1] : null,
+        'pb' => isset($pb[1]) ? (int) $pb[1] : null,
+        'cor' => isset($cor[1]) ? (int) $cor[1] : null,
+    ];
+}
+
 function atualizarDadosImpressora(
     mysqli $conn,
     int $id,
@@ -337,11 +451,30 @@ function atualizarDadosImpressora(
     ];
 }
 
-function sincronizarImpressoraPorRegistro(mysqli $conn, array $impressora, ?string $colunaUltimaAtualizacao = null): array
+function sincronizarImpressoraPorRegistro(
+    mysqli $conn,
+    array $impressora,
+    ?string $colunaUltimaAtualizacao = null,
+    bool $atualizarUltimaAtualizacaoEmFalha = true
+): array
 {
     $id = (int) ($impressora['id'] ?? 0);
     $nome = trim((string) ($impressora['nome'] ?? ''));
     $ip = trim((string) ($impressora['ip'] ?? ''));
+    $debugSyncAtivo = $ip === '192.168.7.249';
+    $diretorioLogs = __DIR__ . '/../logs';
+    $arquivoDebugSync = $diretorioLogs . '/debug_fluxo_sync_l5590.log';
+    $gravarDebugSync = static function (string $linha) use ($debugSyncAtivo, $diretorioLogs, $arquivoDebugSync): void {
+        if (!$debugSyncAtivo) {
+            return;
+        }
+
+        if (!is_dir($diretorioLogs) && !mkdir($diretorioLogs, 0775, true) && !is_dir($diretorioLogs)) {
+            return;
+        }
+
+        @file_put_contents($arquivoDebugSync, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+    };
 
     $resultado = [
         'id' => $id,
@@ -356,13 +489,22 @@ function sincronizarImpressoraPorRegistro(mysqli $conn, array $impressora, ?stri
         'erro' => '',
     ];
 
+    if ($debugSyncAtivo) {
+        $gravarDebugSync(str_repeat('=', 72));
+        $gravarDebugSync('Data/Hora: ' . date('Y-m-d H:i:s'));
+        $gravarDebugSync('id da impressora: ' . $id);
+        $gravarDebugSync('ip: ' . $ip);
+    }
+
     if ($id <= 0) {
         $resultado['erro'] = 'ID da impressora invalido.';
         return $resultado;
     }
 
+    $colunaUpdateFalha = $atualizarUltimaAtualizacaoEmFalha ? $colunaUltimaAtualizacao : null;
+
     if ($ip === '') {
-        $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUltimaAtualizacao);
+        $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUpdateFalha);
         $resultado['erro'] = $update['ok'] ? 'IP vazio.' : $update['erro'];
         return $resultado;
     }
@@ -371,7 +513,7 @@ function sincronizarImpressoraPorRegistro(mysqli $conn, array $impressora, ?stri
     $falhouConexao = $leitura['erro'] !== '' || $leitura['html'] === null || $leitura['http'] !== 200;
 
     if ($falhouConexao) {
-        $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUltimaAtualizacao);
+        $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUpdateFalha);
         if (!$update['ok']) {
             $resultado['erro'] = $update['erro'];
             return $resultado;
@@ -403,6 +545,42 @@ function sincronizarImpressoraPorRegistro(mysqli $conn, array $impressora, ?stri
     if (!$update['ok']) {
         $resultado['erro'] = $update['erro'];
         return $resultado;
+    }
+
+    $uso = buscarUsoImpressora($ip);
+    $gravarDebugSync('retorno buscarUsoImpressora: ' . var_export($uso, true));
+    if ($uso) {
+        $sql = "UPDATE impressoras SET 
+            paginas_total = ?, 
+            paginas_pb = ?, 
+            paginas_cor = ?,
+            ultima_atualizacao = NOW()
+            WHERE id = ?";
+        $gravarDebugSync('SQL usado no update das paginas: ' . preg_replace('/\s+/', ' ', trim($sql)));
+
+        $stmt = $conn->prepare($sql);
+        $gravarDebugSync('resultado prepare(): ' . ($stmt ? 'SUCESSO' : 'FALHOU'));
+        if ($stmt) {
+            $totalUso = (int) $uso['total'];
+            $pbUso = (int) $uso['pb'];
+            $corUso = (int) $uso['cor'];
+
+            $stmt->bind_param(
+                'iiii',
+                $totalUso,
+                $pbUso,
+                $corUso,
+                $id
+            );
+            $okExecute = $stmt->execute();
+            $gravarDebugSync('resultado execute(): ' . ($okExecute ? 'SUCESSO' : 'FALHOU'));
+            $gravarDebugSync('erro statement: ' . ($stmt->error !== '' ? $stmt->error : 'nenhum'));
+            $stmt->close();
+        } else {
+            $gravarDebugSync('erro statement: ' . ($conn->error !== '' ? $conn->error : 'prepare retornou false sem mensagem'));
+        }
+    } else {
+        $gravarDebugSync('update de paginas ignorado porque retorno de uso foi nulo/vazio.');
     }
 
     $resultado['status'] = $status;
