@@ -28,3 +28,29 @@ SQL usado no update das paginas: UPDATE impressoras SET paginas_total = ?, pagin
 resultado prepare(): SUCESSO
 resultado execute(): SUCESSO
 erro statement: nenhum
+========================================================================
+Data/Hora: 2026-04-02 20:09:37
+id da impressora: 1
+ip: 192.168.7.249
+retorno buscarUsoImpressora: array (
+  'total' => 19079,
+  'pb' => 2801,
+  'cor' => 16278,
+)
+SQL usado no update das paginas: UPDATE impressoras SET paginas_total = ?, paginas_pb = ?, paginas_cor = ?, ultima_atualizacao = NOW() WHERE id = ?
+resultado prepare(): SUCESSO
+resultado execute(): SUCESSO
+erro statement: nenhum
+========================================================================
+Data/Hora: 2026-04-02 20:09:46
+id da impressora: 1
+ip: 192.168.7.249
+retorno buscarUsoImpressora: array (
+  'total' => 19079,
+  'pb' => 2801,
+  'cor' => 16278,
+)
+SQL usado no update das paginas: UPDATE impressoras SET paginas_total = ?, paginas_pb = ?, paginas_cor = ?, ultima_atualizacao = NOW() WHERE id = ?
+resultado prepare(): SUCESSO
+resultado execute(): SUCESSO
+erro statement: nenhum
