@@ -117,3 +117,34 @@ preg_match cor (bruto): array (
   0 => 'Número total de páginas a Cor&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">16251</div>',
   1 => '16251',
 )
+======================================================================
+Data/Hora: 2026-04-02 16:02:07
+IP teste: 192.168.7.249
+URL: https://192.168.7.249/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP
+Acesso URL: SIM
+HTTP code: 200
+Erro cURL: nenhum
+Retorno (500 primeiros chars):
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN "
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="Author" content="SEIKO EPSON">
+<meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>L5590 Series</title><link rel='stylesheet' type='text/css' href='../C
+HTML salvo em: C:\xampp\htdocs\estoque_de_tintas\impressora/../logs/debug_uso_l5590.html
+preg_match total (bruto): array (
+  0 => 'Número total de páginas&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">19076</div>',
+  1 => '19076',
+)
+preg_match pb (bruto): array (
+  0 => 'Número total de páginas a P&amp;B&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">2801</div>',
+  1 => '2801',
+)
+preg_match cor (bruto): array (
+  0 => 'Número total de páginas a Cor&nbsp;:</span></dt><dd class="value clearfix"><div class="preserve-white-space">16275</div>',
+  1 => '16275',
+)

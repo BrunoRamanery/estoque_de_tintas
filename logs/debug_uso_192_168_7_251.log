@@ -1,0 +1,33 @@
+========================================================================
+Data/Hora: 2026-04-02 20:03:21
+IP: 192.168.7.251
+Rota principal: https://192.168.7.251/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP
+Acessou: SIM
+HTTP code: 200
+Erro cURL: nenhum
+Encontrou contadores: SIM
+Valores: total=54281 pb=24501 cor=29780 metodo=texto_ascii_tolerante
+raw_total=array (
+  0 => 'N\'umero total de p\'aginas :54281',
+  1 => '54281',
+)
+raw_pb=array (
+  0 => 'N\'umero total de p\'aginas a P&B :24501',
+  1 => '24501',
+)
+raw_cor=array (
+  0 => 'N\'umero total de p\'aginas a Cor :29780',
+  1 => '29780',
+)
+HTML parece diferente: HTML diferente do padrao esperado.
+Primeiros 500 chars:
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN "
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="Author" content="SEIKO EPSON">
+<meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>L14150 Series</title><link rel='stylesheet' type='text/css' href='../
