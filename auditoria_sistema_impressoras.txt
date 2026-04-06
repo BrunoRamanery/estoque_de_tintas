@@ -1,0 +1,54 @@
+
+AUDITORIA E PLANO DE MELHORIAS - SISTEMA DE IMPRESSORAS
+Data: 2026-04-06 19:50
+
+========================================
+1. RESUMO GERAL
+========================================
+Sistema funcional para uso interno, porém ainda não pronto para produção completa.
+Necessário reforço em histórico, sincronização e organização.
+
+========================================
+2. MUDANÇAS CRÍTICAS (FAZER PRIMEIRO)
+========================================
+- Criar tabela de histórico de coletas (fundamental)
+- Garantir que sincronização não sobrescreva dados válidos com falhas
+- Melhorar tratamento de erro na comunicação com impressoras
+- Implementar logs consistentes por execução
+
+========================================
+3. MUDANÇAS IMPORTANTES
+========================================
+- Automatizar sincronização (ex: a cada 5 minutos)
+- Padronizar estrutura de logs (usar apenas /logs)
+- Separar melhor regras de negócio (serviços/repositorios)
+- Melhorar estrutura da página de relatórios
+
+========================================
+4. RELATÓRIOS (PRÓXIMA EVOLUÇÃO)
+========================================
+- Total geral de impressões
+- Total PB e Cor
+- Uso por impressora
+- Futuro: relatórios por dia, semana e mês (depende do histórico)
+
+========================================
+5. SEGURANÇA E PRODUÇÃO
+========================================
+- Remover .git do ambiente produtivo
+- Remover arquivos de debug
+- Configurar credenciais seguras de banco
+- Revisar permissões de arquivos
+
+========================================
+6. PENDENTE FUTURO
+========================================
+- Identificar usuário que imprimiu (depende de servidor externo)
+- Dashboard com gráficos
+- Alertas de baixo nível de tinta
+
+========================================
+7. PRÓXIMO PASSO RECOMENDADO
+========================================
+Implementar tabela de histórico e começar a registrar cada sincronização.
+
