@@ -10,6 +10,206 @@ function limparTexto($texto)
     return trim($texto);
 }
 
+function sincronizacaoDebugAtivo(?string $ip = null): bool
+{
+    $debugRaw = strtolower(trim((string) getenv('SYNC_DEBUG')));
+    $debugHabilitado = in_array($debugRaw, ['1', 'true', 'on', 'yes'], true);
+    if (!$debugHabilitado) {
+        return false;
+    }
+
+    $filtroIp = trim((string) getenv('SYNC_DEBUG_IP'));
+    if ($filtroIp === '' || $ip === null || trim($ip) === '') {
+        return true;
+    }
+
+    $ipsPermitidos = array_values(array_filter(array_map('trim', explode(',', $filtroIp))));
+    return in_array(trim($ip), $ipsPermitidos, true);
+}
+
+function sincronizacaoDebugSalvarHtml(): bool
+{
+    $valor = strtolower(trim((string) getenv('SYNC_DEBUG_SAVE_HTML')));
+    return in_array($valor, ['1', 'true', 'on', 'yes'], true);
+}
+
+function sincronizacaoDiretorioDebug(): string
+{
+    return __DIR__ . '/../var/logs';
+}
+
+function sincronizacaoGravarDebug(bool $ativo, string $arquivo, string $linha): void
+{
+    if (!$ativo) {
+        return;
+    }
+
+    $diretorio = dirname($arquivo);
+    if (!is_dir($diretorio) && !mkdir($diretorio, 0775, true) && !is_dir($diretorio)) {
+        return;
+    }
+
+    @file_put_contents($arquivo, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+function normalizarTextoParaBusca($texto): string
+{
+    $textoLimpo = limparTexto((string) $texto);
+    if ($textoLimpo === '') {
+        return '';
+    }
+
+    if (!preg_match('//u', $textoLimpo)) {
+        $convertido = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $textoLimpo);
+        if (is_string($convertido) && $convertido !== '') {
+            $textoLimpo = $convertido;
+        }
+    }
+
+    $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $textoLimpo);
+    if (is_string($ascii) && $ascii !== '') {
+        $textoLimpo = $ascii;
+    }
+
+    // Remove artefatos da transliteracao, ex.: "n'umero", "impress~ao".
+    $textoLimpo = str_replace(["'", '`', '´', '^', '~', '"'], '', $textoLimpo);
+
+    $textoLimpo = strtolower($textoLimpo);
+    $textoLimpo = preg_replace('/[^a-z0-9&\s]+/', ' ', $textoLimpo) ?? $textoLimpo;
+    $textoLimpo = preg_replace('/\s+/', ' ', $textoLimpo) ?? $textoLimpo;
+    return trim($textoLimpo);
+}
+
+function extrairInteiroDoHtml($html): ?int
+{
+    $texto = limparTexto((string) $html);
+    if ($texto === '') {
+        return null;
+    }
+
+    if (!preg_match('/(\d{1,12})/', $texto, $match)) {
+        return null;
+    }
+
+    return (int) $match[1];
+}
+
+function identificarChaveContadorUso(string $rotuloNormalizado): ?string
+{
+    $rotulo = str_replace(['&nbsp;', '&amp;'], [' ', '&'], $rotuloNormalizado);
+    $rotulo = preg_replace('/\s+/', ' ', $rotulo) ?? $rotulo;
+    $rotulo = trim($rotulo);
+
+    if (
+        str_contains($rotulo, 'numero total de paginas a p&b')
+        || str_contains($rotulo, 'numero total de paginas a pb')
+        || str_contains($rotulo, 'numero total de paginas p&b')
+        || str_contains($rotulo, 'numero total de paginas pb')
+    ) {
+        return 'pb';
+    }
+
+    if (str_contains($rotulo, 'numero total de paginas a cor') || str_contains($rotulo, 'numero total de paginas cor')) {
+        return 'cor';
+    }
+
+    if (str_contains($rotulo, 'numero total de paginas')) {
+        return 'total';
+    }
+
+    return null;
+}
+
+function extrairBlocoInformacoesUso(string $html): ?string
+{
+    if (!preg_match_all('/<fieldset\b[^>]*>(.*?)<\/fieldset>/is', $html, $fieldsets, PREG_SET_ORDER)) {
+        return null;
+    }
+
+    foreach ($fieldsets as $fieldset) {
+        $bloco = (string) ($fieldset[0] ?? '');
+        if ($bloco === '') {
+            continue;
+        }
+
+        if (!preg_match('/<legend\b[^>]*>(.*?)<\/legend>/is', $bloco, $legendMatch)) {
+            continue;
+        }
+
+        $legendNormalizada = normalizarTextoParaBusca($legendMatch[1] ?? '');
+        if (
+            str_contains($legendNormalizada, 'informacoes da impressao')
+            || str_contains($legendNormalizada, 'estado de utilizacao')
+            || str_contains($legendNormalizada, 'informacoes de manutencao')
+        ) {
+            return $bloco;
+        }
+    }
+
+    return null;
+}
+
+function extrairContadoresUsoPorRotulo(string $html): array
+{
+    $contadores = [
+        'total' => null,
+        'pb' => null,
+        'cor' => null,
+    ];
+
+    if (!preg_match_all('/<dt\b[^>]*>(.*?)<\/dt>\s*<dd\b[^>]*>(.*?)<\/dd>/is', $html, $pares, PREG_SET_ORDER)) {
+        return $contadores;
+    }
+
+    foreach ($pares as $par) {
+        $rotuloNormalizado = normalizarTextoParaBusca((string) ($par[1] ?? ''));
+        $chave = identificarChaveContadorUso($rotuloNormalizado);
+        if ($chave === null || $contadores[$chave] !== null) {
+            continue;
+        }
+
+        $valor = extrairInteiroDoHtml((string) ($par[2] ?? ''));
+        if ($valor !== null) {
+            $contadores[$chave] = $valor;
+        }
+    }
+
+    return $contadores;
+}
+
+function extrairContadoresUsoPorOrdem(string $html): array
+{
+    $contadores = [
+        'total' => null,
+        'pb' => null,
+        'cor' => null,
+    ];
+
+    if (!preg_match_all('/<dd\b[^>]*>(.*?)<\/dd>/is', $html, $blocosDd, PREG_SET_ORDER)) {
+        return $contadores;
+    }
+
+    $valores = [];
+    foreach ($blocosDd as $blocoDd) {
+        $valor = extrairInteiroDoHtml((string) ($blocoDd[1] ?? ''));
+        if ($valor !== null) {
+            $valores[] = $valor;
+        }
+    }
+
+    if (isset($valores[0])) {
+        $contadores['total'] = (int) $valores[0];
+    }
+    if (isset($valores[1])) {
+        $contadores['pb'] = (int) $valores[1];
+    }
+    if (isset($valores[2])) {
+        $contadores['cor'] = (int) $valores[2];
+    }
+
+    return $contadores;
+}
+
 function normalizarTextoStatusImpressora($texto)
 {
     $texto = limparTexto($texto);
@@ -48,9 +248,13 @@ function extrairStatusImpressora($html)
         }
     }
 
-    $textoBloco = normalizarTextoStatusImpressora($blocoEstado);
-    if (preg_match('/\b(Dispon[ií]vel|Ocupado)\b/i', $textoBloco, $chaveMatch)) {
-        return normalizarTextoStatusImpressora($chaveMatch[1]);
+    $textoBlocoNormalizado = normalizarTextoParaBusca($blocoEstado);
+    if (str_contains($textoBlocoNormalizado, 'disponivel')) {
+        return 'Disponivel';
+    }
+
+    if (str_contains($textoBlocoNormalizado, 'ocupado')) {
+        return 'Ocupado';
     }
 
     return 'Desconhecido';
@@ -300,28 +504,22 @@ function buscarHtmlInfoImpressora(string $ip): array
 
 function buscarUsoImpressora($ip)
 {
-    $url = "https://$ip/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP";
-    $debugAtivo = trim((string) $ip) === '192.168.7.249';
-    $diretorioLogs = __DIR__ . '/../logs';
-    $arquivoLog = $diretorioLogs . '/debug_uso_l5590.log';
-    $arquivoHtml = $diretorioLogs . '/debug_uso_l5590.html';
+    $ipNormalizado = trim((string) $ip);
+    $url = "https://$ipNormalizado/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP";
+    $debugAtivo = sincronizacaoDebugAtivo($ipNormalizado);
+    $nomeIpArquivo = preg_replace('/[^0-9A-Za-z._-]/', '_', $ipNormalizado) ?: 'sem_ip';
+    $diretorioDebug = sincronizacaoDiretorioDebug();
+    $arquivoLog = $diretorioDebug . '/debug_uso_' . $nomeIpArquivo . '.log';
+    $arquivoHtml = $diretorioDebug . '/debug_uso_' . $nomeIpArquivo . '.html';
 
-    $gravarDebug = static function (string $linha) use ($debugAtivo, $diretorioLogs, $arquivoLog): void {
-        if (!$debugAtivo) {
-            return;
-        }
-
-        if (!is_dir($diretorioLogs) && !mkdir($diretorioLogs, 0775, true) && !is_dir($diretorioLogs)) {
-            return;
-        }
-
-        @file_put_contents($arquivoLog, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+    $gravarDebug = static function (string $linha) use ($debugAtivo, $arquivoLog): void {
+        sincronizacaoGravarDebug($debugAtivo, $arquivoLog, $linha);
     };
 
     if ($debugAtivo) {
         $gravarDebug(str_repeat('=', 70));
         $gravarDebug('Data/Hora: ' . date('Y-m-d H:i:s'));
-        $gravarDebug('IP teste: ' . (string) $ip);
+        $gravarDebug('IP teste: ' . $ipNormalizado);
         $gravarDebug('URL: ' . $url);
     }
 
@@ -339,6 +537,7 @@ function buscarUsoImpressora($ip)
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_USERAGENT => 'Mozilla/5.0',
     ]);
 
     $html = curl_exec($ch);
@@ -347,7 +546,7 @@ function buscarUsoImpressora($ip)
     curl_close($ch);
 
     $conteudoRetornado = $html === false || $html === null ? '' : (string) $html;
-    $acessoOk = $conteudoRetornado !== '' && $erroCurl === '';
+    $acessoOk = $conteudoRetornado !== '' && $erroCurl === '' && $httpCode >= 200 && $httpCode < 400;
 
     $gravarDebug('Acesso URL: ' . ($acessoOk ? 'SIM' : 'NAO'));
     $gravarDebug('HTTP code: ' . $httpCode);
@@ -355,63 +554,48 @@ function buscarUsoImpressora($ip)
     $gravarDebug('Retorno (500 primeiros chars):');
     $gravarDebug(substr($conteudoRetornado, 0, 500));
 
-    if ($conteudoRetornado !== '' && $debugAtivo) {
-        if (!is_dir($diretorioLogs) && !mkdir($diretorioLogs, 0775, true) && !is_dir($diretorioLogs)) {
-            $gravarDebug('Falha ao criar pasta de logs para salvar HTML.');
-        } else {
-            @file_put_contents($arquivoHtml, $conteudoRetornado);
-            $gravarDebug('HTML salvo em: ' . $arquivoHtml);
-        }
+    if ($acessoOk && sincronizacaoDebugSalvarHtml()) {
+        sincronizacaoGravarDebug(true, $arquivoHtml, $conteudoRetornado);
+        $gravarDebug('HTML salvo em: ' . $arquivoHtml);
     }
 
-    if ($erroCurl !== '' || $conteudoRetornado === '' || $httpCode >= 400 || $httpCode === 0) {
+    if (!$acessoOk) {
         return null;
     }
 
-    $total = [];
-    $pb = [];
-    $cor = [];
-
-    // Tentativa 1: busca por rotulos da area "Informacoes da impressao".
-    $padraoTotal = '/N(?:ú|Ãº|u)mero\s+total\s+de\s+p(?:á|Ã¡|a)ginas(?:\s|&nbsp;)*:\s*<\/span>\s*<\/dt>\s*<dd\b[^>]*>.*?<div\b[^>]*>\s*(\d+)\s*<\/div>/isu';
-    $padraoPb = '/N(?:ú|Ãº|u)mero\s+total\s+de\s+p(?:á|Ã¡|a)ginas\s+a\s+P(?:&amp;|&)B(?:\s|&nbsp;)*:\s*<\/span>\s*<\/dt>\s*<dd\b[^>]*>.*?<div\b[^>]*>\s*(\d+)\s*<\/div>/isu';
-    $padraoCor = '/N(?:ú|Ãº|u)mero\s+total\s+de\s+p(?:á|Ã¡|a)ginas\s+a\s+Cor(?:\s|&nbsp;)*:\s*<\/span>\s*<\/dt>\s*<dd\b[^>]*>.*?<div\b[^>]*>\s*(\d+)\s*<\/div>/isu';
-
-    preg_match($padraoTotal, $conteudoRetornado, $total);
-    preg_match($padraoPb, $conteudoRetornado, $pb);
-    preg_match($padraoCor, $conteudoRetornado, $cor);
-
-    // Tentativa 2 (fallback): primeiro fieldset de "Informacoes da impressao",
-    // considerando os tres primeiros valores como total, PB e cor.
-    if (!isset($total[1]) || !isset($pb[1]) || !isset($cor[1])) {
-        if (preg_match('/<legend>\s*Informa(?:ç|Ã§|c)oes?\s+da\s+impress(?:ã|Ã£|a)o\s*<\/legend>(.*?)<\/fieldset>/isu', $conteudoRetornado, $blocoInfo)) {
-            $valores = [];
-            preg_match_all('/<dd\b[^>]*>\s*<div\b[^>]*class=(["\'])[^"\']*\bpreserve-white-space\b[^"\']*\1[^>]*>\s*(\d+)\s*<\/div>\s*<\/dd>/isu', (string) ($blocoInfo[1] ?? ''), $valores, PREG_SET_ORDER);
-            if (!isset($total[1]) && isset($valores[0][2])) {
-                $total[1] = $valores[0][2];
-            }
-            if (!isset($pb[1]) && isset($valores[1][2])) {
-                $pb[1] = $valores[1][2];
-            }
-            if (!isset($cor[1]) && isset($valores[2][2])) {
-                $cor[1] = $valores[2][2];
+    $preencherFaltantes = static function (array $base, array $fallback): array {
+        foreach (['total', 'pb', 'cor'] as $chave) {
+            if ($base[$chave] === null && $fallback[$chave] !== null) {
+                $base[$chave] = (int) $fallback[$chave];
             }
         }
+
+        return $base;
+    };
+
+    $blocoPreferencial = extrairBlocoInformacoesUso($conteudoRetornado);
+    $origem = $blocoPreferencial !== null ? 'fieldset' : 'html_completo';
+    $contadores = extrairContadoresUsoPorRotulo($blocoPreferencial ?? $conteudoRetornado);
+
+    if (in_array(null, $contadores, true) && $blocoPreferencial !== null) {
+        $contadores = $preencherFaltantes($contadores, extrairContadoresUsoPorRotulo($conteudoRetornado));
+        $origem .= '+fallback_html';
     }
 
-    if ($debugAtivo) {
-        $gravarDebug('preg_match total (bruto): ' . var_export($total, true));
-        $gravarDebug('preg_match pb (bruto): ' . var_export($pb, true));
-        $gravarDebug('preg_match cor (bruto): ' . var_export($cor, true));
+    if (in_array(null, $contadores, true)) {
+        $contadores = $preencherFaltantes($contadores, extrairContadoresUsoPorOrdem($blocoPreferencial ?? $conteudoRetornado));
+        $origem .= '+fallback_ordem';
     }
+
+    $gravarDebug('Origem dos contadores: ' . $origem);
+    $gravarDebug('Contadores extraidos: ' . var_export($contadores, true));
 
     return [
-        'total' => isset($total[1]) ? (int) $total[1] : null,
-        'pb' => isset($pb[1]) ? (int) $pb[1] : null,
-        'cor' => isset($cor[1]) ? (int) $cor[1] : null,
+        'total' => $contadores['total'] !== null ? (int) $contadores['total'] : null,
+        'pb' => $contadores['pb'] !== null ? (int) $contadores['pb'] : null,
+        'cor' => $contadores['cor'] !== null ? (int) $contadores['cor'] : null,
     ];
 }
-
 function atualizarDadosImpressora(
     mysqli $conn,
     int $id,
@@ -461,19 +645,11 @@ function sincronizarImpressoraPorRegistro(
     $id = (int) ($impressora['id'] ?? 0);
     $nome = trim((string) ($impressora['nome'] ?? ''));
     $ip = trim((string) ($impressora['ip'] ?? ''));
-    $debugSyncAtivo = $ip === '192.168.7.249';
-    $diretorioLogs = __DIR__ . '/../logs';
-    $arquivoDebugSync = $diretorioLogs . '/debug_fluxo_sync_l5590.log';
-    $gravarDebugSync = static function (string $linha) use ($debugSyncAtivo, $diretorioLogs, $arquivoDebugSync): void {
-        if (!$debugSyncAtivo) {
-            return;
-        }
-
-        if (!is_dir($diretorioLogs) && !mkdir($diretorioLogs, 0775, true) && !is_dir($diretorioLogs)) {
-            return;
-        }
-
-        @file_put_contents($arquivoDebugSync, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+    $debugSyncAtivo = sincronizacaoDebugAtivo($ip);
+    $nomeIpArquivo = preg_replace('/[^0-9A-Za-z._-]/', '_', $ip) ?: 'sem_ip';
+    $arquivoDebugSync = sincronizacaoDiretorioDebug() . '/debug_fluxo_sync_' . $nomeIpArquivo . '.log';
+    $gravarDebugSync = static function (string $linha) use ($debugSyncAtivo, $arquivoDebugSync): void {
+        sincronizacaoGravarDebug($debugSyncAtivo, $arquivoDebugSync, $linha);
     };
 
     $resultado = [
@@ -553,17 +729,19 @@ function sincronizarImpressoraPorRegistro(
         $sql = "UPDATE impressoras SET 
             paginas_total = ?, 
             paginas_pb = ?, 
-            paginas_cor = ?,
-            ultima_atualizacao = NOW()
-            WHERE id = ?";
+            paginas_cor = ?";
+        if ($colunaUltimaAtualizacao !== null && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $colunaUltimaAtualizacao)) {
+            $sql .= ", " . $colunaUltimaAtualizacao . " = NOW()";
+        }
+        $sql .= ' WHERE id = ?';
         $gravarDebugSync('SQL usado no update das paginas: ' . preg_replace('/\s+/', ' ', trim($sql)));
 
         $stmt = $conn->prepare($sql);
         $gravarDebugSync('resultado prepare(): ' . ($stmt ? 'SUCESSO' : 'FALHOU'));
         if ($stmt) {
-            $totalUso = (int) $uso['total'];
-            $pbUso = (int) $uso['pb'];
-            $corUso = (int) $uso['cor'];
+            $totalUso = isset($uso['total']) && is_numeric($uso['total']) ? (int) $uso['total'] : null;
+            $pbUso = isset($uso['pb']) && is_numeric($uso['pb']) ? (int) $uso['pb'] : null;
+            $corUso = isset($uso['cor']) && is_numeric($uso['cor']) ? (int) $uso['cor'] : null;
 
             $stmt->bind_param(
                 'iiii',
@@ -591,3 +769,4 @@ function sincronizarImpressoraPorRegistro(
     $resultado['ok'] = true;
     return $resultado;
 }
+

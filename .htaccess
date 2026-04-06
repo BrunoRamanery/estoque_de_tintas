@@ -1,3 +1,9 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^logs/ - [F,L,NC]
+    RewriteRule ^var/ - [F,L,NC]
+</IfModule>
+
 <FilesMatch "\.(env|ini|log|bak|old|orig|tmp|temp|swp|dist|sql)$">
     Require all denied
 </FilesMatch>

@@ -2,21 +2,45 @@
 /**
  * Sincroniza uma impressora especifica por ID.
  */
+require_once __DIR__ . '/../app/utilidades.php';
+require_once __DIR__ . '/../usuario/verificar_login.php';
 require_once __DIR__ . '/../conexao.php';
 require_once __DIR__ . '/sincronizacao_helper.php';
 
-$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$buscaRetorno = trim((string) ($_POST['retorno_busca'] ?? ''));
+$montarUrlRetorno = static function (string $busca): string {
+    $url = 'impressoras.php';
+    if ($busca !== '') {
+        $url .= '?' . http_build_query(['busca' => $busca]);
+    }
+    return $url;
+};
 
-if ($id <= 0) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    definir_mensagem_flash('erro', 'Metodo nao permitido para sincronizacao individual.');
     $conn->close();
-    exit('ID invalido.');
+    header('Location: ' . $montarUrlRetorno($buscaRetorno));
+    exit;
+}
+
+validar_csrf_ou_encerrar((string) ($_POST['csrf_token'] ?? ''));
+
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+
+if ($id === false || $id === null || $id <= 0) {
+    definir_mensagem_flash('erro', 'ID invalido para sincronizacao.');
+    $conn->close();
+    header('Location: ' . $montarUrlRetorno($buscaRetorno));
+    exit;
 }
 
 $sql = 'SELECT id, nome, modelo, ip FROM impressoras WHERE id = ?';
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
+    definir_mensagem_flash('erro', 'Falha ao preparar consulta da impressora.');
     $conn->close();
-    exit('Falha ao preparar consulta da impressora.');
+    header('Location: ' . $montarUrlRetorno($buscaRetorno));
+    exit;
 }
 
 $stmt->bind_param('i', $id);
@@ -26,24 +50,28 @@ $impressora = $result->fetch_assoc();
 $stmt->close();
 
 if (!$impressora) {
+    definir_mensagem_flash('erro', 'Impressora nao encontrada.');
     $conn->close();
-    exit('Impressora nao encontrada.');
+    header('Location: ' . $montarUrlRetorno($buscaRetorno));
+    exit;
 }
 
 $colunaUltimaAtualizacao = detectarColunaUltimaAtualizacao($conn);
 $resultado = sincronizarImpressoraPorRegistro($conn, $impressora, $colunaUltimaAtualizacao);
 $conn->close();
 
-echo '<h1>Sincronizacao concluida</h1>';
-echo '<p><strong>Impressora:</strong> ' . htmlspecialchars((string) ($resultado['nome'] ?? '')) . '</p>';
-echo '<p><strong>IP:</strong> ' . htmlspecialchars((string) ($resultado['ip'] ?? '')) . '</p>';
-echo '<p><strong>Status:</strong> ' . htmlspecialchars((string) ($resultado['status'] ?? 'Desconhecido')) . '</p>';
-echo '<p><strong>Preto:</strong> ' . ($resultado['preto'] !== null ? ((int) $resultado['preto']) . '%' : 'Nao encontrado') . '</p>';
-echo '<p><strong>Ciano:</strong> ' . ($resultado['ciano'] !== null ? ((int) $resultado['ciano']) . '%' : 'Nao encontrado') . '</p>';
-echo '<p><strong>Magenta:</strong> ' . ($resultado['magenta'] !== null ? ((int) $resultado['magenta']) . '%' : 'Nao encontrado') . '</p>';
-echo '<p><strong>Amarelo:</strong> ' . ($resultado['amarelo'] !== null ? ((int) $resultado['amarelo']) . '%' : 'Nao encontrado') . '</p>';
-echo '<p><strong>Resultado:</strong> ' . ($resultado['ok'] ? 'OK' : 'ERRO') . '</p>';
-
-if (!$resultado['ok'] && $resultado['erro'] !== '') {
-    echo '<p><strong>Detalhe:</strong> ' . htmlspecialchars((string) $resultado['erro']) . '</p>';
+if (!empty($resultado['ok'])) {
+    definir_mensagem_flash(
+        'sucesso',
+        'Sincronizacao concluida para ' . (string) ($resultado['nome'] ?? 'impressora') . '.'
+    );
+} else {
+    $detalhe = trim((string) ($resultado['erro'] ?? ''));
+    definir_mensagem_flash(
+        'erro',
+        'Falha na sincronizacao de ' . (string) ($resultado['nome'] ?? 'impressora') . ($detalhe !== '' ? ': ' . $detalhe : '.')
+    );
 }
+
+header('Location: ' . $montarUrlRetorno($buscaRetorno));
+exit;

@@ -3,6 +3,8 @@
  * Arquivo de teste de conexao/leitura.
  * Nao grava nada no banco.
  */
+require_once __DIR__ . '/../app/utilidades.php';
+require_once __DIR__ . '/../usuario/verificar_login.php';
 require_once __DIR__ . '/../conexao.php';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;

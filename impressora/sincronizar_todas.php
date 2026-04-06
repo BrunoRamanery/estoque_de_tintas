@@ -3,7 +3,7 @@
  * Sincroniza todas as impressoras cadastradas.
  *
  * Fluxo principal (POST): processa e redireciona para impressoras.php com mensagem flash.
- * Fluxo opcional (GET ?relatorio=1): exibe relatorio tecnico em tela.
+ * Fluxo tecnico opcional: enviar POST com relatorio=1 para exibir o relatorio em tela.
  */
 require_once __DIR__ . '/../app/utilidades.php';
 require_once __DIR__ . '/../usuario/verificar_login.php';
@@ -12,23 +12,21 @@ require_once __DIR__ . '/sincronizacao_helper.php';
 
 @set_time_limit(0);
 
-$modoRelatorio = isset($_GET['relatorio']) && (string) $_GET['relatorio'] === '1';
-$retornoBusca = trim((string) ($_POST['retorno_busca'] ?? $_GET['busca'] ?? ''));
+$modoRelatorio = isset($_POST['relatorio']) && (string) $_POST['relatorio'] === '1';
+$retornoBusca = trim((string) ($_POST['retorno_busca'] ?? ''));
 
-if (!$modoRelatorio) {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        definir_mensagem_flash('erro', 'Metodo nao permitido para sincronizacao em lote.');
-        $url = 'impressoras.php';
-        if ($retornoBusca !== '') {
-            $url .= '?' . http_build_query(['busca' => $retornoBusca]);
-        }
-        $conn->close();
-        header('Location: ' . $url);
-        exit;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    definir_mensagem_flash('erro', 'Metodo nao permitido para sincronizacao em lote.');
+    $url = 'impressoras.php';
+    if ($retornoBusca !== '') {
+        $url .= '?' . http_build_query(['busca' => $retornoBusca]);
     }
-
-    validar_csrf_ou_encerrar((string) ($_POST['csrf_token'] ?? ''));
+    $conn->close();
+    header('Location: ' . $url);
+    exit;
 }
+
+validar_csrf_ou_encerrar((string) ($_POST['csrf_token'] ?? ''));
 
 $consulta = $conn->query('SELECT id, nome, modelo, ip FROM impressoras ORDER BY nome ASC, id ASC');
 if (!$consulta) {
