@@ -210,6 +210,261 @@ function extrairContadoresUsoPorOrdem(string $html): array
     return $contadores;
 }
 
+function extrairCelulasTabela(string $linhaHtml): array
+{
+    if (!preg_match_all('/<(?:th|td)\b[^>]*>(.*?)<\/(?:th|td)>/is', $linhaHtml, $celulas)) {
+        return [];
+    }
+
+    return $celulas[1] ?? [];
+}
+
+function cabecalhoTabelaParaMapa(array $celulasHtml): array
+{
+    $mapa = [
+        'pb_simples' => null,
+        'cor_simples' => null,
+        'pb_duplex' => null,
+        'cor_duplex' => null,
+    ];
+
+    foreach ($celulasHtml as $indice => $celulaHtml) {
+        $texto = normalizarTextoParaBusca($celulaHtml);
+        if ($texto === '') {
+            continue;
+        }
+
+        $temPb = str_contains($texto, 'pb')
+            || str_contains($texto, 'p&b')
+            || str_contains($texto, 'preto')
+            || str_contains($texto, 'mono');
+        $temCor = str_contains($texto, 'cor') || str_contains($texto, 'color');
+        $temSimples = str_contains($texto, 'simplex')
+            || str_contains($texto, 'simples')
+            || str_contains($texto, 'simple');
+        $temDuplex = str_contains($texto, 'duplex')
+            || str_contains($texto, 'dupla')
+            || str_contains($texto, 'double');
+
+        if ($temPb && $temSimples) {
+            $mapa['pb_simples'] = $indice;
+        }
+        if ($temCor && $temSimples) {
+            $mapa['cor_simples'] = $indice;
+        }
+        if ($temPb && $temDuplex) {
+            $mapa['pb_duplex'] = $indice;
+        }
+        if ($temCor && $temDuplex) {
+            $mapa['cor_duplex'] = $indice;
+        }
+    }
+
+    return $mapa;
+}
+
+function linhaEhA4Letter(array $celulasHtml): bool
+{
+    if (empty($celulasHtml)) {
+        return false;
+    }
+
+    $primeira = normalizarTextoParaBusca($celulasHtml[0]);
+    if ($primeira === '') {
+        return false;
+    }
+
+    return (str_contains($primeira, 'a4') && str_contains($primeira, 'letter'))
+        || str_contains($primeira, 'a4/letter');
+}
+
+function linhaEhA3Ledger(array $celulasHtml): bool
+{
+    if (empty($celulasHtml)) {
+        return false;
+    }
+
+    $primeira = normalizarTextoParaBusca($celulasHtml[0]);
+    if ($primeira === '') {
+        return false;
+    }
+
+    return (str_contains($primeira, 'a3') && str_contains($primeira, 'ledger'))
+        || str_contains($primeira, 'a3/ledger');
+}
+
+function extrairA4LetterOrdenadoPorTamanho(string $html, ?callable $logger = null): array
+{
+    $resultado = [
+        'a4_pb_simples' => null,
+        'a4_cor_simples' => null,
+        'a4_pb_duplex' => null,
+        'a4_cor_duplex' => null,
+    ];
+
+    if (!preg_match_all('/<table\b[^>]*>(.*?)<\/table>/is', $html, $tabelas, PREG_SET_ORDER)) {
+        return $resultado;
+    }
+
+    foreach ($tabelas as $tabelaMatch) {
+        $tabelaHtml = (string) ($tabelaMatch[0] ?? '');
+        if ($tabelaHtml === '') {
+            continue;
+        }
+
+        if (!preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $tabelaHtml, $linhas, PREG_SET_ORDER)) {
+            continue;
+        }
+
+        $mapaCabecalho = null;
+        foreach ($linhas as $linhaMatch) {
+            $linhaHtml = (string) ($linhaMatch[0] ?? '');
+            if ($linhaHtml === '') {
+                continue;
+            }
+
+            $celulas = extrairCelulasTabela($linhaHtml);
+            if (empty($celulas)) {
+                continue;
+            }
+
+            if ($mapaCabecalho === null && preg_match('/<th\b/i', $linhaHtml)) {
+                $mapaCabecalho = cabecalhoTabelaParaMapa($celulas);
+                continue;
+            }
+
+            if (!linhaEhA4Letter($celulas)) {
+                continue;
+            }
+
+            $valores = [];
+            foreach ($celulas as $indice => $celulaHtml) {
+                if ($indice === 0) {
+                    continue;
+                }
+                $valores[$indice] = extrairInteiroDoHtml($celulaHtml);
+            }
+
+            $mapaCompleto = is_array($mapaCabecalho)
+                && $mapaCabecalho['pb_simples'] !== null
+                && $mapaCabecalho['cor_simples'] !== null
+                && $mapaCabecalho['pb_duplex'] !== null
+                && $mapaCabecalho['cor_duplex'] !== null;
+
+            if ($mapaCompleto) {
+                $resultado['a4_pb_simples'] = $valores[$mapaCabecalho['pb_simples']] ?? null;
+                $resultado['a4_cor_simples'] = $valores[$mapaCabecalho['cor_simples']] ?? null;
+                $resultado['a4_pb_duplex'] = $valores[$mapaCabecalho['pb_duplex']] ?? null;
+                $resultado['a4_cor_duplex'] = $valores[$mapaCabecalho['cor_duplex']] ?? null;
+            } else {
+                $valoresOrdenados = array_values($valores);
+                $resultado['a4_pb_simples'] = $valoresOrdenados[0] ?? null;
+                $resultado['a4_cor_simples'] = $valoresOrdenados[1] ?? null;
+                $resultado['a4_pb_duplex'] = $valoresOrdenados[2] ?? null;
+                $resultado['a4_cor_duplex'] = $valoresOrdenados[3] ?? null;
+            }
+
+            if ($logger) {
+                $logger('Linha A4/Letter encontrada: ' . var_export($resultado, true));
+            }
+
+            return $resultado;
+        }
+    }
+
+    if ($logger) {
+        $logger('Linha A4/Letter nao encontrada.');
+    }
+
+    return $resultado;
+}
+
+function extrairA3LedgerOrdenadoPorTamanho(string $html, ?callable $logger = null): array
+{
+    $resultado = [
+        'a3_pb_simples' => null,
+        'a3_cor_simples' => null,
+        'a3_pb_duplex' => null,
+        'a3_cor_duplex' => null,
+    ];
+
+    if (!preg_match_all('/<table\b[^>]*>(.*?)<\/table>/is', $html, $tabelas, PREG_SET_ORDER)) {
+        return $resultado;
+    }
+
+    foreach ($tabelas as $tabelaMatch) {
+        $tabelaHtml = (string) ($tabelaMatch[0] ?? '');
+        if ($tabelaHtml === '') {
+            continue;
+        }
+
+        if (!preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/is', $tabelaHtml, $linhas, PREG_SET_ORDER)) {
+            continue;
+        }
+
+        $mapaCabecalho = null;
+        foreach ($linhas as $linhaMatch) {
+            $linhaHtml = (string) ($linhaMatch[0] ?? '');
+            if ($linhaHtml === '') {
+                continue;
+            }
+
+            $celulas = extrairCelulasTabela($linhaHtml);
+            if (empty($celulas)) {
+                continue;
+            }
+
+            if ($mapaCabecalho === null && preg_match('/<th\b/i', $linhaHtml)) {
+                $mapaCabecalho = cabecalhoTabelaParaMapa($celulas);
+                continue;
+            }
+
+            if (!linhaEhA3Ledger($celulas)) {
+                continue;
+            }
+
+            $valores = [];
+            foreach ($celulas as $indice => $celulaHtml) {
+                if ($indice === 0) {
+                    continue;
+                }
+                $valores[$indice] = extrairInteiroDoHtml($celulaHtml);
+            }
+
+            $mapaCompleto = is_array($mapaCabecalho)
+                && $mapaCabecalho['pb_simples'] !== null
+                && $mapaCabecalho['cor_simples'] !== null
+                && $mapaCabecalho['pb_duplex'] !== null
+                && $mapaCabecalho['cor_duplex'] !== null;
+
+            if ($mapaCompleto) {
+                $resultado['a3_pb_simples'] = $valores[$mapaCabecalho['pb_simples']] ?? null;
+                $resultado['a3_cor_simples'] = $valores[$mapaCabecalho['cor_simples']] ?? null;
+                $resultado['a3_pb_duplex'] = $valores[$mapaCabecalho['pb_duplex']] ?? null;
+                $resultado['a3_cor_duplex'] = $valores[$mapaCabecalho['cor_duplex']] ?? null;
+            } else {
+                $valoresOrdenados = array_values($valores);
+                $resultado['a3_pb_simples'] = $valoresOrdenados[0] ?? null;
+                $resultado['a3_cor_simples'] = $valoresOrdenados[1] ?? null;
+                $resultado['a3_pb_duplex'] = $valoresOrdenados[2] ?? null;
+                $resultado['a3_cor_duplex'] = $valoresOrdenados[3] ?? null;
+            }
+
+            if ($logger) {
+                $logger('Linha A3/Ledger encontrada: ' . var_export($resultado, true));
+            }
+
+            return $resultado;
+        }
+    }
+
+    if ($logger) {
+        $logger('Linha A3/Ledger nao encontrada.');
+    }
+
+    return $resultado;
+}
+
 function normalizarTextoStatusImpressora($texto)
 {
     $texto = limparTexto($texto);
@@ -590,10 +845,21 @@ function buscarUsoImpressora($ip)
     $gravarDebug('Origem dos contadores: ' . $origem);
     $gravarDebug('Contadores extraidos: ' . var_export($contadores, true));
 
+    $a4Letter = extrairA4LetterOrdenadoPorTamanho($conteudoRetornado, $debugAtivo ? $gravarDebug : null);
+    $a3Ledger = extrairA3LedgerOrdenadoPorTamanho($conteudoRetornado, $debugAtivo ? $gravarDebug : null);
+
     return [
         'total' => $contadores['total'] !== null ? (int) $contadores['total'] : null,
         'pb' => $contadores['pb'] !== null ? (int) $contadores['pb'] : null,
         'cor' => $contadores['cor'] !== null ? (int) $contadores['cor'] : null,
+        'a4_pb_simples' => $a4Letter['a4_pb_simples'] ?? null,
+        'a4_cor_simples' => $a4Letter['a4_cor_simples'] ?? null,
+        'a4_pb_duplex' => $a4Letter['a4_pb_duplex'] ?? null,
+        'a4_cor_duplex' => $a4Letter['a4_cor_duplex'] ?? null,
+        'a3_pb_simples' => $a3Ledger['a3_pb_simples'] ?? null,
+        'a3_cor_simples' => $a3Ledger['a3_cor_simples'] ?? null,
+        'a3_pb_duplex' => $a3Ledger['a3_pb_duplex'] ?? null,
+        'a3_cor_duplex' => $a3Ledger['a3_cor_duplex'] ?? null,
     ];
 }
 function atualizarDadosImpressora(
@@ -635,6 +901,96 @@ function atualizarDadosImpressora(
     ];
 }
 
+function inserirHistoricoImpressora(
+    mysqli $conn,
+    int $impressoraId,
+    ?int $paginasTotal,
+    ?int $paginasPb,
+    ?int $paginasCor,
+    ?int $a4PbSimples,
+    ?int $a4CorSimples,
+    ?int $a4PbDuplex,
+    ?int $a4CorDuplex,
+    ?int $a3PbSimples,
+    ?int $a3CorSimples,
+    ?int $a3PbDuplex,
+    ?int $a3CorDuplex,
+    ?int $tintaPreto,
+    ?int $tintaCiano,
+    ?int $tintaMagenta,
+    ?int $tintaAmarelo,
+    string $statusImpressora
+): array {
+    $sql = "INSERT INTO historico_impressoras (
+                impressora_id,
+                data_hora,
+                paginas_total,
+                paginas_pb,
+                paginas_cor,
+                a4_pb_simples,
+                a4_cor_simples,
+                a4_pb_duplex,
+                a4_cor_duplex,
+                a3_pb_simples,
+                a3_cor_simples,
+                a3_pb_duplex,
+                a3_cor_duplex,
+                tinta_preto,
+                tinta_ciano,
+                tinta_magenta,
+                tinta_amarelo,
+                status_impressora
+            ) VALUES (
+                ?,
+                NOW(),
+                ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?
+            )";
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return ['ok' => false, 'erro' => 'Falha ao preparar insert do historico: ' . $conn->error];
+    }
+
+    $tintaPretoTexto = $tintaPreto !== null ? (string) $tintaPreto : null;
+    $tintaCianoTexto = $tintaCiano !== null ? (string) $tintaCiano : null;
+    $tintaMagentaTexto = $tintaMagenta !== null ? (string) $tintaMagenta : null;
+    $tintaAmareloTexto = $tintaAmarelo !== null ? (string) $tintaAmarelo : null;
+
+    $stmt->bind_param(
+        'iiiiiiiiiiiisssss',
+        $impressoraId,
+        $paginasTotal,
+        $paginasPb,
+        $paginasCor,
+        $a4PbSimples,
+        $a4CorSimples,
+        $a4PbDuplex,
+        $a4CorDuplex,
+        $a3PbSimples,
+        $a3CorSimples,
+        $a3PbDuplex,
+        $a3CorDuplex,
+        $tintaPretoTexto,
+        $tintaCianoTexto,
+        $tintaMagentaTexto,
+        $tintaAmareloTexto,
+        $statusImpressora
+    );
+
+    $ok = $stmt->execute();
+    $erro = $stmt->error;
+    $stmt->close();
+
+    return [
+        'ok' => (bool) $ok,
+        'erro' => $ok ? '' : ('Falha ao inserir historico: ' . $erro),
+    ];
+}
+
 function sincronizarImpressoraPorRegistro(
     mysqli $conn,
     array $impressora,
@@ -664,6 +1020,17 @@ function sincronizarImpressoraPorRegistro(
         'ok' => false,
         'erro' => '',
     ];
+    $paginasTotal = null;
+    $paginasPb = null;
+    $paginasCor = null;
+    $a4PbSimples = null;
+    $a4CorSimples = null;
+    $a4PbDuplex = null;
+    $a4CorDuplex = null;
+    $a3PbSimples = null;
+    $a3CorSimples = null;
+    $a3PbDuplex = null;
+    $a3CorDuplex = null;
 
     if ($debugSyncAtivo) {
         $gravarDebugSync(str_repeat('=', 72));
@@ -681,6 +1048,35 @@ function sincronizarImpressoraPorRegistro(
 
     if ($ip === '') {
         $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUpdateFalha);
+        if ($update['ok']) {
+            $historico = inserirHistoricoImpressora(
+                $conn,
+                $id,
+                $paginasTotal,
+                $paginasPb,
+                $paginasCor,
+                $a4PbSimples,
+                $a4CorSimples,
+                $a4PbDuplex,
+                $a4CorDuplex,
+                $a3PbSimples,
+                $a3CorSimples,
+                $a3PbDuplex,
+                $a3CorDuplex,
+                null,
+                null,
+                null,
+                null,
+                'offline'
+            );
+            $gravarDebugSync('resultado insert historico (IP vazio): ' . ($historico['ok'] ? 'SUCESSO' : 'FALHOU'));
+            if (!$historico['ok']) {
+                $gravarDebugSync('erro insert historico (IP vazio): ' . $historico['erro']);
+                $resultado['erro'] = 'IP vazio. ' . $historico['erro'];
+                return $resultado;
+            }
+        }
+
         $resultado['erro'] = $update['ok'] ? 'IP vazio.' : $update['erro'];
         return $resultado;
     }
@@ -696,6 +1092,33 @@ function sincronizarImpressoraPorRegistro(
         }
 
         $mensagemErro = $leitura['erro'] !== '' ? $leitura['erro'] : ('HTTP ' . (int) $leitura['http']);
+        $historico = inserirHistoricoImpressora(
+            $conn,
+            $id,
+            $paginasTotal,
+            $paginasPb,
+            $paginasCor,
+            $a4PbSimples,
+            $a4CorSimples,
+            $a4PbDuplex,
+            $a4CorDuplex,
+            $a3PbSimples,
+            $a3CorSimples,
+            $a3PbDuplex,
+            $a3CorDuplex,
+            null,
+            null,
+            null,
+            null,
+            'offline'
+        );
+        $gravarDebugSync('resultado insert historico (falha conexao): ' . ($historico['ok'] ? 'SUCESSO' : 'FALHOU'));
+        if (!$historico['ok']) {
+            $gravarDebugSync('erro insert historico (falha conexao): ' . $historico['erro']);
+            $resultado['erro'] = 'Falha ao acessar impressora: ' . $mensagemErro . ' | ' . $historico['erro'];
+            return $resultado;
+        }
+
         $resultado['erro'] = 'Falha ao acessar impressora: ' . $mensagemErro;
         return $resultado;
     }
@@ -729,7 +1152,15 @@ function sincronizarImpressoraPorRegistro(
         $sql = "UPDATE impressoras SET 
             paginas_total = ?, 
             paginas_pb = ?, 
-            paginas_cor = ?";
+            paginas_cor = ?,
+            a4_pb_simples = ?,
+            a4_cor_simples = ?,
+            a4_pb_duplex = ?,
+            a4_cor_duplex = ?,
+            a3_pb_simples = ?,
+            a3_cor_simples = ?,
+            a3_pb_duplex = ?,
+            a3_cor_duplex = ?";
         if ($colunaUltimaAtualizacao !== null && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $colunaUltimaAtualizacao)) {
             $sql .= ", " . $colunaUltimaAtualizacao . " = NOW()";
         }
@@ -739,15 +1170,32 @@ function sincronizarImpressoraPorRegistro(
         $stmt = $conn->prepare($sql);
         $gravarDebugSync('resultado prepare(): ' . ($stmt ? 'SUCESSO' : 'FALHOU'));
         if ($stmt) {
-            $totalUso = isset($uso['total']) && is_numeric($uso['total']) ? (int) $uso['total'] : null;
-            $pbUso = isset($uso['pb']) && is_numeric($uso['pb']) ? (int) $uso['pb'] : null;
-            $corUso = isset($uso['cor']) && is_numeric($uso['cor']) ? (int) $uso['cor'] : null;
+            $paginasTotal = isset($uso['total']) && is_numeric($uso['total']) ? (int) $uso['total'] : null;
+            $paginasPb = isset($uso['pb']) && is_numeric($uso['pb']) ? (int) $uso['pb'] : null;
+            $paginasCor = isset($uso['cor']) && is_numeric($uso['cor']) ? (int) $uso['cor'] : null;
+
+            $a4PbSimples = isset($uso['a4_pb_simples']) && is_numeric($uso['a4_pb_simples']) ? (int) $uso['a4_pb_simples'] : null;
+            $a4CorSimples = isset($uso['a4_cor_simples']) && is_numeric($uso['a4_cor_simples']) ? (int) $uso['a4_cor_simples'] : null;
+            $a4PbDuplex = isset($uso['a4_pb_duplex']) && is_numeric($uso['a4_pb_duplex']) ? (int) $uso['a4_pb_duplex'] : null;
+            $a4CorDuplex = isset($uso['a4_cor_duplex']) && is_numeric($uso['a4_cor_duplex']) ? (int) $uso['a4_cor_duplex'] : null;
+            $a3PbSimples = isset($uso['a3_pb_simples']) && is_numeric($uso['a3_pb_simples']) ? (int) $uso['a3_pb_simples'] : null;
+            $a3CorSimples = isset($uso['a3_cor_simples']) && is_numeric($uso['a3_cor_simples']) ? (int) $uso['a3_cor_simples'] : null;
+            $a3PbDuplex = isset($uso['a3_pb_duplex']) && is_numeric($uso['a3_pb_duplex']) ? (int) $uso['a3_pb_duplex'] : null;
+            $a3CorDuplex = isset($uso['a3_cor_duplex']) && is_numeric($uso['a3_cor_duplex']) ? (int) $uso['a3_cor_duplex'] : null;
 
             $stmt->bind_param(
-                'iiii',
-                $totalUso,
-                $pbUso,
-                $corUso,
+                'iiiiiiiiiiii',
+                $paginasTotal,
+                $paginasPb,
+                $paginasCor,
+                $a4PbSimples,
+                $a4CorSimples,
+                $a4PbDuplex,
+                $a4CorDuplex,
+                $a3PbSimples,
+                $a3CorSimples,
+                $a3PbDuplex,
+                $a3CorDuplex,
                 $id
             );
             $okExecute = $stmt->execute();
@@ -759,6 +1207,38 @@ function sincronizarImpressoraPorRegistro(
         }
     } else {
         $gravarDebugSync('update de paginas ignorado porque retorno de uso foi nulo/vazio.');
+    }
+
+    $historico = inserirHistoricoImpressora(
+        $conn,
+        $id,
+        $paginasTotal,
+        $paginasPb,
+        $paginasCor,
+        $a4PbSimples,
+        $a4CorSimples,
+        $a4PbDuplex,
+        $a4CorDuplex,
+        $a3PbSimples,
+        $a3CorSimples,
+        $a3PbDuplex,
+        $a3CorDuplex,
+        $preto,
+        $ciano,
+        $magenta,
+        $amarelo,
+        $status
+    );
+    $gravarDebugSync('resultado insert historico (sucesso sync): ' . ($historico['ok'] ? 'SUCESSO' : 'FALHOU'));
+    if (!$historico['ok']) {
+        $gravarDebugSync('erro insert historico (sucesso sync): ' . $historico['erro']);
+        $resultado['status'] = $status;
+        $resultado['preto'] = $preto;
+        $resultado['ciano'] = $ciano;
+        $resultado['magenta'] = $magenta;
+        $resultado['amarelo'] = $amarelo;
+        $resultado['erro'] = $historico['erro'];
+        return $resultado;
     }
 
     $resultado['status'] = $status;

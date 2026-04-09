@@ -1,0 +1,81 @@
+AUDITORIA GERAL DO SISTEMA
+Data: 2026-04-07
+
+Escopo:
+- autenticacao e sessao
+- CRUD de tintas
+- CRUD e sincronizacao de impressoras
+- configuracao e organizacao geral
+
+Resumo executivo:
+- O sistema tem uma base boa de seguranca para um projeto interno: login obrigatorio, CSRF, prepared statements e escaping de saida.
+- O maior risco atual esta no modulo de impressoras: qualquer usuario autenticado consegue cadastrar IPs arbitrarios e fazer o servidor executar requisicoes de rede.
+- O maior risco de integridade esta no estoque de tintas: a consolidacao por modelo/cor/mes/ano depende da aplicacao e nao de uma restricao garantida no banco.
+
+Achados prioritarios:
+1. Alto: superficie de SSRF no modulo de impressoras.
+   Evidencias:
+   - cadastro e edicao aceitam qualquer IP valido
+   - sincronizacao usa cURL com follow redirect
+   - verificacao SSL esta desligada
+   - ha fallback de HTTPS para HTTP
+   Impacto:
+   - um usuario autenticado comprometido pode usar o servidor para atingir hosts internos/externos
+   - risco de varredura interna e de uso indevido da infraestrutura
+
+2. Medio/alto: consolidacao de tintas vulneravel a condicao de corrida.
+   Evidencias:
+   - o repositorio procura um registro existente antes de inserir/atualizar
+   - nao ha lock explicito nem upsert transacional por chave unica garantida
+   - a migracao versionada apenas comenta a criacao da UNIQUE KEY, mas nao a executa
+   Impacto:
+   - registros duplicados
+   - totais incorretos no dashboard e nos alertas
+
+3. Medio: sincronizacao web sobrescreve estado com falha.
+   Evidencias:
+   - na sincronizacao web, falha de conexao grava status offline
+   - o helper pode atualizar ultima_atualizacao mesmo em falha
+   - o script CLI ja evita isso explicitamente, o que mostra comportamento inconsistente
+   Impacto:
+   - mascara o ultimo estado valido
+   - dificulta diagnostico operacional
+
+4. Medio/baixo: endpoint de teste expoe HTML bruto da impressora.
+   Evidencias:
+   - teste_conexao.php mostra trechos grandes do HTML retornado pelo equipamento
+   - qualquer usuario autenticado pode acessar o endpoint
+   Impacto:
+   - vazamento desnecessario de informacao tecnica do equipamento
+   - ampliacao da superficie de reconhecimento interno
+
+5. Medio/baixo: ausencia de testes automatizados.
+   Evidencias:
+   - existe checklist manual
+   - nao ha testes automatizados, CI ou suite de regressao versionada
+   Impacto:
+   - maior chance de regressao silenciosa em seguranca e regra de negocio
+
+Pontos positivos confirmados:
+- sessao com HttpOnly, SameSite e regenerate no login
+- validacao CSRF nos POSTs relevantes
+- uso predominante de prepared statements
+- escaping de saida nas telas principais
+- diretorios sensiveis protegidos por .htaccess
+
+Recomendacoes imediatas:
+1. Restringir cadastro, edicao, exclusao, teste e sincronizacao de impressoras para admin ou perfil tecnico.
+2. Permitir somente sub-redes autorizadas de impressoras e remover redirects na cURL.
+3. Criar UNIQUE KEY real para tinta (modelo, cor, mes, ano) e tratar colisao no codigo.
+4. Nao sobrescrever ultima_atualizacao nem o ultimo estado valido quando a coleta falhar.
+5. Remover ou blindar teste_conexao.php em producao.
+6. Criar testes automatizados minimos para login, CSRF, CRUD de tintas e sincronizacao.
+
+Validacoes executadas nesta auditoria:
+- leitura dos endpoints e camadas principais
+- verificacao de rotas sensiveis e integracoes de rede
+- lint PHP com C:\xampp\php\php.exe em todos os arquivos PHP
+
+Limitacoes:
+- nao foi possivel consultar o schema real do MySQL porque o servidor local nao estava aceitando conexoes
+- nao houve execucao funcional via navegador; a auditoria foi baseada em inspecao de codigo e lint
