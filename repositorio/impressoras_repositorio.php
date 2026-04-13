@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Repositorio de impressoras.
  *
@@ -7,7 +7,31 @@
 
 function repo_impressoras_listar(mysqli $conn, string $busca = ''): array
 {
-    $sql = 'SELECT id, nome, modelo, ip, localizacao, observacao, status_impressora, tinta_preto, tinta_ciano, tinta_magenta, tinta_amarelo FROM impressoras';
+    $sql = 'SELECT
+                id,
+                nome,
+                modelo,
+                ip,
+                localizacao,
+                observacao,
+                status_impressora,
+                tinta_preto,
+                tinta_ciano,
+                tinta_magenta,
+                tinta_amarelo,
+                paginas_total,
+                paginas_pb,
+                paginas_cor,
+                a4_pb_simples,
+                a4_cor_simples,
+                a4_pb_duplex,
+                a4_cor_duplex,
+                a3_pb_simples,
+                a3_cor_simples,
+                a3_pb_duplex,
+                a3_cor_duplex,
+                ultima_atualizacao
+            FROM impressoras';
     $tipos = '';
     $parametros = [];
 
@@ -46,6 +70,18 @@ function repo_impressoras_listar(mysqli $conn, string $busca = ''): array
             'tinta_ciano' => ($row['tinta_ciano'] !== null && $row['tinta_ciano'] !== '') ? (int) $row['tinta_ciano'] : null,
             'tinta_magenta' => ($row['tinta_magenta'] !== null && $row['tinta_magenta'] !== '') ? (int) $row['tinta_magenta'] : null,
             'tinta_amarelo' => ($row['tinta_amarelo'] !== null && $row['tinta_amarelo'] !== '') ? (int) $row['tinta_amarelo'] : null,
+            'paginas_total' => ($row['paginas_total'] !== null && $row['paginas_total'] !== '') ? (int) $row['paginas_total'] : null,
+            'paginas_pb' => ($row['paginas_pb'] !== null && $row['paginas_pb'] !== '') ? (int) $row['paginas_pb'] : null,
+            'paginas_cor' => ($row['paginas_cor'] !== null && $row['paginas_cor'] !== '') ? (int) $row['paginas_cor'] : null,
+            'a4_pb_simples' => ($row['a4_pb_simples'] !== null && $row['a4_pb_simples'] !== '') ? (int) $row['a4_pb_simples'] : null,
+            'a4_cor_simples' => ($row['a4_cor_simples'] !== null && $row['a4_cor_simples'] !== '') ? (int) $row['a4_cor_simples'] : null,
+            'a4_pb_duplex' => ($row['a4_pb_duplex'] !== null && $row['a4_pb_duplex'] !== '') ? (int) $row['a4_pb_duplex'] : null,
+            'a4_cor_duplex' => ($row['a4_cor_duplex'] !== null && $row['a4_cor_duplex'] !== '') ? (int) $row['a4_cor_duplex'] : null,
+            'a3_pb_simples' => ($row['a3_pb_simples'] !== null && $row['a3_pb_simples'] !== '') ? (int) $row['a3_pb_simples'] : null,
+            'a3_cor_simples' => ($row['a3_cor_simples'] !== null && $row['a3_cor_simples'] !== '') ? (int) $row['a3_cor_simples'] : null,
+            'a3_pb_duplex' => ($row['a3_pb_duplex'] !== null && $row['a3_pb_duplex'] !== '') ? (int) $row['a3_pb_duplex'] : null,
+            'a3_cor_duplex' => ($row['a3_cor_duplex'] !== null && $row['a3_cor_duplex'] !== '') ? (int) $row['a3_cor_duplex'] : null,
+            'ultima_atualizacao' => trim((string) ($row['ultima_atualizacao'] ?? '')),
         ];
     }
 
@@ -55,7 +91,34 @@ function repo_impressoras_listar(mysqli $conn, string $busca = ''): array
 
 function repo_impressoras_buscar_por_id(mysqli $conn, int $id): ?array
 {
-    $stmt = $conn->prepare('SELECT id, nome, modelo, ip, localizacao, observacao, status_impressora, tinta_preto, tinta_ciano, tinta_magenta, tinta_amarelo FROM impressoras WHERE id = ?');
+    $stmt = $conn->prepare(
+        'SELECT
+            id,
+            nome,
+            modelo,
+            ip,
+            localizacao,
+            observacao,
+            status_impressora,
+            tinta_preto,
+            tinta_ciano,
+            tinta_magenta,
+            tinta_amarelo,
+            paginas_total,
+            paginas_pb,
+            paginas_cor,
+            a4_pb_simples,
+            a4_cor_simples,
+            a4_pb_duplex,
+            a4_cor_duplex,
+            a3_pb_simples,
+            a3_cor_simples,
+            a3_pb_duplex,
+            a3_cor_duplex,
+            ultima_atualizacao
+         FROM impressoras
+         WHERE id = ?'
+    );
     if (!$stmt) {
         throw new RuntimeException('Erro ao preparar detalhes da impressora.');
     }
@@ -82,6 +145,18 @@ function repo_impressoras_buscar_por_id(mysqli $conn, int $id): ?array
         'tinta_ciano' => ($row['tinta_ciano'] !== null && $row['tinta_ciano'] !== '') ? (int) $row['tinta_ciano'] : null,
         'tinta_magenta' => ($row['tinta_magenta'] !== null && $row['tinta_magenta'] !== '') ? (int) $row['tinta_magenta'] : null,
         'tinta_amarelo' => ($row['tinta_amarelo'] !== null && $row['tinta_amarelo'] !== '') ? (int) $row['tinta_amarelo'] : null,
+        'paginas_total' => ($row['paginas_total'] !== null && $row['paginas_total'] !== '') ? (int) $row['paginas_total'] : null,
+        'paginas_pb' => ($row['paginas_pb'] !== null && $row['paginas_pb'] !== '') ? (int) $row['paginas_pb'] : null,
+        'paginas_cor' => ($row['paginas_cor'] !== null && $row['paginas_cor'] !== '') ? (int) $row['paginas_cor'] : null,
+        'a4_pb_simples' => ($row['a4_pb_simples'] !== null && $row['a4_pb_simples'] !== '') ? (int) $row['a4_pb_simples'] : null,
+        'a4_cor_simples' => ($row['a4_cor_simples'] !== null && $row['a4_cor_simples'] !== '') ? (int) $row['a4_cor_simples'] : null,
+        'a4_pb_duplex' => ($row['a4_pb_duplex'] !== null && $row['a4_pb_duplex'] !== '') ? (int) $row['a4_pb_duplex'] : null,
+        'a4_cor_duplex' => ($row['a4_cor_duplex'] !== null && $row['a4_cor_duplex'] !== '') ? (int) $row['a4_cor_duplex'] : null,
+        'a3_pb_simples' => ($row['a3_pb_simples'] !== null && $row['a3_pb_simples'] !== '') ? (int) $row['a3_pb_simples'] : null,
+        'a3_cor_simples' => ($row['a3_cor_simples'] !== null && $row['a3_cor_simples'] !== '') ? (int) $row['a3_cor_simples'] : null,
+        'a3_pb_duplex' => ($row['a3_pb_duplex'] !== null && $row['a3_pb_duplex'] !== '') ? (int) $row['a3_pb_duplex'] : null,
+        'a3_cor_duplex' => ($row['a3_cor_duplex'] !== null && $row['a3_cor_duplex'] !== '') ? (int) $row['a3_cor_duplex'] : null,
+        'ultima_atualizacao' => trim((string) ($row['ultima_atualizacao'] ?? '')),
     ];
 }
 
@@ -143,3 +218,4 @@ function repo_impressoras_excluir(mysqli $conn, int $id): bool
 
     return true;
 }
+?>

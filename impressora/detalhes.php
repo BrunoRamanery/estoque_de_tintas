@@ -52,6 +52,54 @@ if ($buscaRetorno !== '') {
 }
 $linkEditar = 'editar.php?' . http_build_query($queryDetalhe);
 
+$formatarDataHoraCurta = static function (?string $valor): string {
+    $texto = trim((string) $valor);
+    if ($texto === '') {
+        return 'Sem sincronizacao';
+    }
+
+    $data = date_create($texto);
+    if (!$data) {
+        return $texto;
+    }
+
+    return $data->format('d/m/Y H:i');
+};
+
+$detectarFormatoUso = static function (array $item): array {
+    $totalA3 = 0;
+    $totalA4 = 0;
+
+    foreach (['a3_pb_simples', 'a3_cor_simples', 'a3_pb_duplex', 'a3_cor_duplex'] as $campoA3) {
+        $totalA3 += (int) ($item[$campoA3] ?? 0);
+    }
+
+    foreach (['a4_pb_simples', 'a4_cor_simples', 'a4_pb_duplex', 'a4_cor_duplex'] as $campoA4) {
+        $totalA4 += (int) ($item[$campoA4] ?? 0);
+    }
+
+    if ($totalA3 > 0 && $totalA4 > 0) {
+        return ['label' => 'A3 + A4 detectado', 'classe' => 'impressora-pill--misto'];
+    }
+
+    if ($totalA3 > 0) {
+        return ['label' => 'Uso A3 detectado', 'classe' => 'impressora-pill--a3'];
+    }
+
+    if ($totalA4 > 0) {
+        return ['label' => 'Uso A4 detectado', 'classe' => 'impressora-pill--a4'];
+    }
+
+    return ['label' => 'Formato sem deteccao', 'classe' => 'impressora-pill--sync'];
+};
+
+$formatoVisual = $detectarFormatoUso($impressora);
+$statusVisual = trim((string) ($impressora['status_impressora'] ?? '')) !== ''
+    ? trim((string) $impressora['status_impressora'])
+    : 'Sem status';
+$ultimaAtualizacaoFormatada = $formatarDataHoraCurta($impressora['ultima_atualizacao'] ?? null);
+$paginasTotalAtual = (int) ($impressora['paginas_total'] ?? 0);
+
 $tituloPagina = 'Detalhes da Impressora';
 $caminhoCss = '../css/principal.css';
 ?>
@@ -102,6 +150,20 @@ $caminhoCss = '../css/principal.css';
                 <div>
                     <h2><?= e((string) ($impressora['nome'] ?? '')) ?></h2>
                     <p>Dados cadastrados da impressora.</p>
+                    <div class="impressora-badges">
+                        <span class="impressora-pill impressora-pill--status">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <?= e($statusVisual) ?>
+                        </span>
+                        <span class="impressora-pill <?= e($formatoVisual['classe']) ?>">
+                            <i class="fa-solid fa-clone"></i>
+                            <?= e($formatoVisual['label']) ?>
+                        </span>
+                        <span class="impressora-pill impressora-pill--sync">
+                            <i class="fa-solid fa-clock"></i>
+                            <?= e($ultimaAtualizacaoFormatada) ?>
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -124,6 +186,11 @@ $caminhoCss = '../css/principal.css';
                 <div class="mini-metrica-impressora">
                     <span>Localizacao</span>
                     <strong><?= e((string) (($impressora['localizacao'] ?? '') !== '' ? $impressora['localizacao'] : '-')) ?></strong>
+                </div>
+
+                <div class="mini-metrica-impressora">
+                    <span>Paginas atuais</span>
+                    <strong><?= e((string) $paginasTotalAtual) ?></strong>
                 </div>
             </div>
 

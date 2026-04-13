@@ -76,10 +76,44 @@ $caminhoCss = "../css/principal.css";
     require __DIR__ . "/../includes/topo_sistema.php";
 ?>
 <div class="container form-container">
-    <div class="form-topo">
-        <h1>Editar Impressora</h1>
-        <p class="subtitulo">Atualize os dados da impressora selecionada.</p>
-    </div>
+    <section class="pagina-hero">
+        <div class="pagina-hero__conteudo">
+            <span class="pagina-hero__eyebrow">
+                <i class="fa-solid fa-pen-to-square"></i>
+                Ajuste visual do cadastro
+            </span>
+            <h1>Editar Impressora</h1>
+            <p>Atualize os dados cadastrais da impressora mantendo exatamente a mesma logica do sistema. Esta camada muda apenas a organizacao visual do formulario.</p>
+
+            <div class="pagina-hero__chips">
+                <span class="pagina-hero__chip">
+                    <i class="fa-solid fa-print"></i>
+                    <?= e($formData['nome'] !== '' ? $formData['nome'] : 'Impressora selecionada') ?>
+                </span>
+                <span class="pagina-hero__chip">
+                    <i class="fa-solid fa-network-wired"></i>
+                    <?= e($formData['ip'] !== '' ? $formData['ip'] : 'IP nao informado') ?>
+                </span>
+            </div>
+        </div>
+
+        <aside class="pagina-hero__painel">
+            <span class="pagina-hero__rotulo">Resumo atual</span>
+            <strong><?= e($formData['modelo'] !== '' ? $formData['modelo'] : 'Sem modelo') ?></strong>
+            <small>Os dados continuam sendo gravados pelo mesmo endpoint e com a mesma validacao ja existente.</small>
+
+            <div class="pagina-hero__metricas">
+                <div class="pagina-hero__metrica">
+                    <span>Localizacao</span>
+                    <strong><?= e($formData['localizacao'] !== '' ? $formData['localizacao'] : 'Nao informada') ?></strong>
+                </div>
+                <div class="pagina-hero__metrica">
+                    <span>Retorno</span>
+                    <strong>Detalhes da impressora</strong>
+                </div>
+            </div>
+        </aside>
+    </section>
 
     <?php if (!empty($mensagem)): ?>
         <div class="alerta alerta-<?= e($mensagem['tipo']) ?>">
@@ -93,33 +127,39 @@ $caminhoCss = "../css/principal.css";
         <input type="hidden" name="busca" value="<?= e($buscaRetorno) ?>">
 
         <div class="campo">
-            <label for="nome">Nome</label>
+            <label for="nome"><i class="fa-solid fa-print"></i> Nome</label>
             <input id="nome" type="text" name="nome" value="<?= e($formData['nome']) ?>" required maxlength="100">
         </div>
 
         <div class="campo">
-            <label for="modelo">Modelo</label>
+            <label for="modelo"><i class="fa-solid fa-layer-group"></i> Modelo</label>
             <input id="modelo" type="text" name="modelo" value="<?= e($formData['modelo']) ?>" required maxlength="100">
         </div>
 
         <div class="campo">
-            <label for="ip">IP</label>
+            <label for="ip"><i class="fa-solid fa-network-wired"></i> IP</label>
             <input id="ip" type="text" name="ip" value="<?= e($formData['ip']) ?>" required maxlength="45">
         </div>
 
         <div class="campo">
-            <label for="localizacao">Localizacao</label>
+            <label for="localizacao"><i class="fa-solid fa-location-dot"></i> Localizacao</label>
             <input id="localizacao" type="text" name="localizacao" value="<?= e($formData['localizacao']) ?>" maxlength="120">
         </div>
 
         <div class="campo">
-            <label for="observacao">Observacao</label>
+            <label for="observacao"><i class="fa-solid fa-note-sticky"></i> Observacao</label>
             <input id="observacao" type="text" name="observacao" value="<?= e($formData['observacao']) ?>" maxlength="255">
         </div>
 
         <div class="form-acoes-grid">
-            <button type="submit" class="btn-salvar">Atualizar</button>
-            <a href="<?= e($voltarUrl) ?>" class="btn-voltar">Voltar</a>
+            <button type="submit" class="btn-salvar">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Atualizar
+            </button>
+            <a href="<?= e($voltarUrl) ?>" class="btn-voltar">
+                <i class="fa-solid fa-arrow-left"></i>
+                Voltar
+            </a>
         </div>
     </form>
 </div>

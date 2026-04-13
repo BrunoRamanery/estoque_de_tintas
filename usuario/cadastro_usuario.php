@@ -26,17 +26,12 @@ if (!$cadastroInicial) {
 $csrfToken = obter_token_csrf();
 $voltarHref = $cadastroInicial ? 'login.php' : '../index.php';
 $voltarTexto = $cadastroInicial ? 'Voltar para login' : 'Voltar para painel';
+$tituloPagina = 'Cadastrar Usuario | Estoque de Tintas';
+$caminhoCss = '../css/principal.css';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastrar Usuario | Estoque de Tintas</title>
-
-    <link rel="stylesheet" href="../css/principal.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-</head>
+<?php require __DIR__ . '/../includes/cabecalho.php'; ?>
 <body class="tela-autenticacao">
 
 <div class="auth-layout">

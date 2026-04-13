@@ -75,6 +75,63 @@ $normalizarPercentualTinta = static function ($valor): ?int {
     return $numero;
 };
 
+$formatarDataHoraCurta = static function (?string $valor): string {
+    $texto = trim((string) $valor);
+    if ($texto === '') {
+        return 'Sem sincronizacao';
+    }
+
+    $data = date_create($texto);
+    if (!$data) {
+        return $texto;
+    }
+
+    return $data->format('d/m/Y H:i');
+};
+
+$detectarFormatoUso = static function (array $impressora): array {
+    $totalA3 = 0;
+    $totalA4 = 0;
+
+    foreach (['a3_pb_simples', 'a3_cor_simples', 'a3_pb_duplex', 'a3_cor_duplex'] as $campoA3) {
+        $totalA3 += (int) ($impressora[$campoA3] ?? 0);
+    }
+
+    foreach (['a4_pb_simples', 'a4_cor_simples', 'a4_pb_duplex', 'a4_cor_duplex'] as $campoA4) {
+        $totalA4 += (int) ($impressora[$campoA4] ?? 0);
+    }
+
+    if ($totalA3 > 0 && $totalA4 > 0) {
+        return [
+            'label' => 'A3 + A4 detectado',
+            'classe' => 'impressora-pill--misto',
+            'chave' => 'misto',
+        ];
+    }
+
+    if ($totalA3 > 0) {
+        return [
+            'label' => 'Uso A3 detectado',
+            'classe' => 'impressora-pill--a3',
+            'chave' => 'a3',
+        ];
+    }
+
+    if ($totalA4 > 0) {
+        return [
+            'label' => 'Uso A4 detectado',
+            'classe' => 'impressora-pill--a4',
+            'chave' => 'a4',
+        ];
+    }
+
+    return [
+        'label' => 'Formato sem deteccao',
+        'classe' => 'impressora-pill--sync',
+        'chave' => 'indefinido',
+    ];
+};
+
 $renderizarTanqueTinta = static function (string $sigla, ?int $percentual, string $corHex, string $contexto = 'card'): string {
     $classeContexto = $contexto === 'tabela' ? 'tanque-tinta--tabela' : 'tanque-tinta--card';
     $semDado = $percentual === null;
@@ -108,6 +165,26 @@ $renderizarGrupoTintas = static function (array $impressora, string $contexto = 
     <?php
     return (string) ob_get_clean();
 };
+
+$totalUsoA3Detectado = 0;
+$totalUsoA4Detectado = 0;
+
+foreach ($impressoras as &$impressora) {
+    $impressora['ultima_atualizacao_formatada'] = $formatarDataHoraCurta($impressora['ultima_atualizacao'] ?? null);
+    $impressora['status_visual'] = trim((string) ($impressora['status_impressora'] ?? '')) !== ''
+        ? trim((string) $impressora['status_impressora'])
+        : 'Sem status';
+    $impressora['formato_visual'] = $detectarFormatoUso($impressora);
+
+    if (($impressora['formato_visual']['chave'] ?? '') === 'a3' || ($impressora['formato_visual']['chave'] ?? '') === 'misto') {
+        $totalUsoA3Detectado++;
+    }
+
+    if (($impressora['formato_visual']['chave'] ?? '') === 'a4' || ($impressora['formato_visual']['chave'] ?? '') === 'misto') {
+        $totalUsoA4Detectado++;
+    }
+}
+unset($impressora);
 
 $tituloPagina = 'Impressoras';
 $caminhoCss = '../css/principal.css';
@@ -170,6 +247,14 @@ $caminhoCss = '../css/principal.css';
                     <span>Sem localizacao</span>
                 </div>
             </div>
+
+            <div class="card-resumo card-breve">
+                <div class="icone-resumo"><i class="fa-solid fa-expand"></i></div>
+                <div>
+                    <strong><?= e($totalUsoA3Detectado) ?></strong>
+                    <span>Com uso A3 detectado</span>
+                </div>
+            </div>
         </section>
 
         <form method="GET" class="painel-filtros painel-filtros-impressoras">
@@ -216,6 +301,20 @@ $caminhoCss = '../css/principal.css';
                             <div>
                                 <h2><?= e($impressora['nome']) ?></h2>
                                 <p>Modelo: <?= e($modelo) ?></p>
+                                <div class="impressora-badges">
+                                    <span class="impressora-pill impressora-pill--status">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                        <?= e($impressora['status_visual']) ?>
+                                    </span>
+                                    <span class="impressora-pill <?= e($impressora['formato_visual']['classe']) ?>">
+                                        <i class="fa-solid fa-clone"></i>
+                                        <?= e($impressora['formato_visual']['label']) ?>
+                                    </span>
+                                    <span class="impressora-pill impressora-pill--sync">
+                                        <i class="fa-solid fa-clock"></i>
+                                        <?= e($impressora['ultima_atualizacao_formatada']) ?>
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -228,6 +327,11 @@ $caminhoCss = '../css/principal.css';
                             <div class="mini-info">
                                 <span class="mini-label">Localizacao</span>
                                 <strong><?= e($localizacao) ?></strong>
+                            </div>
+
+                            <div class="mini-info">
+                                <span class="mini-label">Paginas atuais</span>
+                                <strong><?= e((string) ((int) ($impressora['paginas_total'] ?? 0))) ?></strong>
                             </div>
                         </div>
 
@@ -286,8 +390,11 @@ $caminhoCss = '../css/principal.css';
                             <th><i class="fa-solid fa-layer-group"></i> Modelo</th>
                             <th><i class="fa-solid fa-network-wired"></i> IP</th>
                             <th><i class="fa-solid fa-location-dot"></i> Localizacao</th>
+                            <th><i class="fa-solid fa-clone"></i> Formato</th>
+                            <th><i class="fa-solid fa-signal"></i> Status</th>
                             <th><i class="fa-solid fa-droplet"></i> Tintas</th>
                             <th><i class="fa-solid fa-note-sticky"></i> Observacao</th>
+                            <th><i class="fa-solid fa-clock"></i> Ultima sync</th>
                             <th><i class="fa-solid fa-screwdriver-wrench"></i> Acoes</th>
                         </tr>
                     </thead>
@@ -308,8 +415,19 @@ $caminhoCss = '../css/principal.css';
                                     <td><?= e($modelo) ?></td>
                                     <td><?= e($ip) ?></td>
                                     <td><?= e($localizacao) ?></td>
+                                    <td>
+                                        <span class="impressora-pill <?= e($impressora['formato_visual']['classe']) ?>">
+                                            <?= e($impressora['formato_visual']['label']) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="impressora-pill impressora-pill--status">
+                                            <?= e($impressora['status_visual']) ?>
+                                        </span>
+                                    </td>
                                     <td class="coluna-tintas-impressora"><?= $renderizarGrupoTintas($impressora, 'tabela') ?></td>
                                     <td><?= e($observacao) ?></td>
+                                    <td><?= e($impressora['ultima_atualizacao_formatada']) ?></td>
                                     <td class="acoes acoes-impressora">
                                         <a class="btn-acao btn-editar" href="<?= e($linkDetalhes) ?>">
                                             <i class="fa-solid fa-eye"></i> Ver detalhes
@@ -330,7 +448,7 @@ $caminhoCss = '../css/principal.css';
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="vazio">Nenhuma impressora cadastrada no momento.</td>
+                                <td colspan="10" class="vazio">Nenhuma impressora cadastrada no momento.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

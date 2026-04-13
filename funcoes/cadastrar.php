@@ -51,10 +51,44 @@ $caminhoCss = '../css/principal.css';
         require __DIR__ . "/../includes/topo_sistema.php";
     ?>
     <div class="container form-container">
-        <div class="form-topo">
-            <h1><i class="fa-solid fa-circle-plus"></i> Nova Tinta</h1>
-            <p class="subtitulo">Preencha os dados abaixo para cadastrar uma nova tinta no estoque.</p>
-        </div>
+        <section class="pagina-hero">
+            <div class="pagina-hero__conteudo">
+                <span class="pagina-hero__eyebrow">
+                    <i class="fa-solid fa-circle-plus"></i>
+                    Novo item de estoque
+                </span>
+                <h1>Nova Tinta</h1>
+                <p>Cadastre uma nova tinta mantendo o mesmo fluxo de gravacao ja existente. Esta tela foi reorganizada para destacar melhor os campos e reduzir ruído visual.</p>
+
+                <div class="pagina-hero__chips">
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-print"></i>
+                        Vinculo com impressora
+                    </span>
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        Controle por validade
+                    </span>
+                </div>
+            </div>
+
+            <aside class="pagina-hero__painel">
+                <span class="pagina-hero__rotulo">Fluxo atual</span>
+                <strong>Cadastro sem alterar logica</strong>
+                <small>As validacoes, mesclagem de registros e operacoes no banco seguem exatamente como ja funcionavam.</small>
+
+                <div class="pagina-hero__metricas">
+                    <div class="pagina-hero__metrica">
+                        <span>Persistencia</span>
+                        <strong>Mesmo endpoint</strong>
+                    </div>
+                    <div class="pagina-hero__metrica">
+                        <span>Integridade</span>
+                        <strong>Sem impacto</strong>
+                    </div>
+                </div>
+            </aside>
+        </section>
 
         <?php if (!empty($errors)): ?>
             <ul class="erros">

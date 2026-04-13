@@ -23,15 +23,28 @@ $caminhoCss = 'css/principal.css';
     ?>
 
     <div class="container dashboard-clean">
-        <section class="bloco-detalhes">
-            <div class="bloco-detalhes-topo">
-                <div class="icone-bloco">
-                    <i class="fa-solid fa-user-gear"></i>
+        <section class="relatorios-hero">
+            <div class="relatorios-hero__conteudo">
+                <span class="relatorios-hero__eyebrow">Conta</span>
+                <h1><?= e($usuarioNome) ?></h1>
+                <p>Area de referencia da sessao atual. Aqui ficam os dados de acesso e os atalhos para administracao do sistema.</p>
+
+                <div class="relatorios-hero__chips">
+                    <span class="relatorio-chip">
+                        <i class="fa-solid fa-user"></i>
+                        Perfil: <?= e($usuarioNivelLabel) ?>
+                    </span>
+                    <span class="relatorio-chip">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <?= $usuarioAdmin ? 'Permissao administrativa ativa' : 'Acesso comum' ?>
+                    </span>
                 </div>
-                <div>
-                    <h2>Conta</h2>
-                    <p>Informacoes da sessao ativa e acessos administrativos.</p>
-                </div>
+            </div>
+
+            <div class="relatorios-hero__painel">
+                <span class="relatorios-hero__rotulo">Acesso atual</span>
+                <strong><?= e($usuarioNivelLabel) ?></strong>
+                <small><?= $usuarioAdmin ? 'Este usuario pode gerenciar acessos e configuracoes sensiveis.' : 'Este usuario utiliza o sistema com permissoes operacionais.' ?></small>
             </div>
         </section>
 
@@ -41,6 +54,7 @@ $caminhoCss = 'css/principal.css';
                 <div>
                     <strong><?= e($usuarioNome) ?></strong>
                     <span>Usuario conectado</span>
+                    <small>Sessao autenticada no sistema</small>
                 </div>
             </div>
 
@@ -49,6 +63,7 @@ $caminhoCss = 'css/principal.css';
                 <div>
                     <strong><?= e($usuarioNivelLabel) ?></strong>
                     <span>Nivel de acesso</span>
+                    <small><?= $usuarioAdmin ? 'Com privilegios de administracao' : 'Com permissoes padrao de uso' ?></small>
                 </div>
             </div>
         </section>
@@ -73,6 +88,14 @@ $caminhoCss = 'css/principal.css';
                         <i class="fa-solid fa-arrow-right"></i> Voltar ao painel
                     </a>
                 <?php endif; ?>
+            </div>
+
+            <div class="card-menu">
+                <h3><i class="fa-solid fa-chart-column"></i> Relatorios</h3>
+                <p>Consulte o consumo por periodo e acompanhe o comportamento das impressoras.</p>
+                <a href="relatorios.php" class="btn-entrar">
+                    <i class="fa-solid fa-arrow-right"></i> Abrir relatorios
+                </a>
             </div>
         </section>
     </div>

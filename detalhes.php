@@ -46,10 +46,51 @@ $caminhoCss = 'css/principal.css';
     require __DIR__ . "/includes/topo_sistema.php";
 ?>
 <div class="container detalhes-simples">
-    <div class="topo">
-        <h1><i class="fa-solid fa-box"></i> Modelo <?= e($modelo) ?></h1>
-        <a href="tintas.php" class="botao">Voltar</a>
-    </div>
+    <section class="pagina-hero">
+        <div class="pagina-hero__conteudo">
+            <span class="pagina-hero__eyebrow">
+                <i class="fa-solid fa-box"></i>
+                Estoque por modelo
+            </span>
+            <h1>Modelo <?= e($modelo) ?></h1>
+            <p>Visualize os lotes vinculados a este modelo, os alertas de compra e a leitura consolidada por cor sem alterar nenhum comportamento do sistema.</p>
+
+            <div class="pagina-hero__chips">
+                <span class="pagina-hero__chip">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <?= e(count($tintas)) ?> registro(s)
+                </span>
+                <span class="pagina-hero__chip">
+                    <i class="fa-solid fa-palette"></i>
+                    <?= e(count($resumoCor)) ?> cor(es) monitoradas
+                </span>
+            </div>
+
+            <div class="pagina-hero__acoes">
+                <a href="tintas.php" class="btn-voltar">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Voltar para tintas
+                </a>
+            </div>
+        </div>
+
+        <aside class="pagina-hero__painel">
+            <span class="pagina-hero__rotulo">Leitura rapida</span>
+            <strong><?= e($totalQuantidade) ?> unidades</strong>
+            <small>Resumo operacional do modelo atual, com foco em estoque disponivel e pontos de atencao.</small>
+
+            <div class="pagina-hero__metricas">
+                <div class="pagina-hero__metrica">
+                    <span>Compra urgente</span>
+                    <strong><?= e($totalCompraUrgente) ?></strong>
+                </div>
+                <div class="pagina-hero__metrica">
+                    <span>Vence em breve</span>
+                    <strong><?= e($totalVenceBreve) ?></strong>
+                </div>
+            </div>
+        </aside>
+    </section>
 
     <div class="cards">
         <div class="card">

@@ -61,6 +61,8 @@ if (preg_match('/(^|[\/\\\\])principal\.css$/i', $hrefCss)) {
         $prefixo . 'paginas/detalhes.css',
         $prefixo . 'paginas/responsivo.css',
         $prefixo . 'paginas/autenticacao.css',
+        $prefixo . 'paginas/relatorios.css',
+        $prefixo . 'paginas/sistema_moderno.css',
     ];
 }
 ?>
@@ -68,6 +70,9 @@ if (preg_match('/(^|[\/\\\\])principal\.css$/i', $hrefCss)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($tituloPagina ?? 'Controle de Tintas') ?></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <?php foreach ($folhasCss as $folhaCss): ?>
         <link rel="stylesheet" href="<?= e($versionarHrefCss($folhaCss)) ?>">

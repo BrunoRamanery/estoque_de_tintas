@@ -110,81 +110,178 @@ if (!$modoRelatorio) {
     header('Location: ' . $url);
     exit;
 }
+
+$tituloPagina = 'Sincronizacao de Impressoras';
+$caminhoCss = '../css/principal.css';
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sincronizacao de Impressoras</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
-        h1 { margin-bottom: 8px; }
-        .resumo { margin-bottom: 20px; }
-        .resumo strong { margin-right: 14px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #dbe2ea; padding: 10px; text-align: left; vertical-align: top; }
-        th { background: #f8fafc; }
-        .ok { color: #166534; font-weight: 700; }
-        .erro { color: #b91c1c; font-weight: 700; }
-        .muted { color: #64748b; }
-        .acoes { margin-top: 18px; }
-        .acoes a { color: #1d4ed8; text-decoration: none; font-weight: 700; }
-    </style>
-</head>
-<body>
-    <h1>Sincronizacao de Impressoras</h1>
-    <div class="resumo">
-        <strong>Total: <?= (int) count($relatorio) ?></strong>
-        <strong>Sucesso: <?= (int) $totalSucesso ?></strong>
-        <strong>Falhas: <?= (int) $totalFalha ?></strong>
-    </div>
+<?php require __DIR__ . '/../includes/cabecalho.php'; ?>
+<body class="tela-sistema">
+    <?php
+        $basePrefix = "../";
+        $paginaAtual = "impressoras";
+        $paginaTitulo = "Sincronizacao em lote";
+        $paginaDescricao = "Relatorio tecnico da execucao de sincronizacao";
+        require __DIR__ . "/../includes/topo_sistema.php";
+    ?>
+    <div class="container sincronizacao-relatorio">
+        <section class="pagina-hero">
+            <div class="pagina-hero__conteudo">
+                <span class="pagina-hero__eyebrow">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    Relatorio tecnico
+                </span>
+                <h1>Sincronizacao de Impressoras</h1>
+                <p>Visao consolidada da execucao manual da sincronizacao em lote. O processamento continua o mesmo; aqui foi alterada apenas a apresentacao do resultado.</p>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Impressora</th>
-                <th>IP</th>
-                <th>Status salvo</th>
-                <th>Tintas (BK/C/M/Y)</th>
-                <th>Resultado</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (empty($relatorio)): ?>
-                <tr>
-                    <td colspan="5" class="muted">Nenhuma impressora cadastrada.</td>
-                </tr>
-            <?php else: ?>
-                <?php foreach ($relatorio as $item): ?>
-                    <tr>
-                        <td><?= htmlspecialchars((string) ($item['nome'] ?? '')) ?></td>
-                        <td><?= htmlspecialchars((string) ($item['ip'] ?? '')) ?></td>
-                        <td><?= htmlspecialchars((string) ($item['status'] ?? 'Desconhecido')) ?></td>
-                        <td>
-                            BK: <?= $item['preto'] !== null ? ((int) $item['preto']) . '%' : '-' ?> |
-                            C: <?= $item['ciano'] !== null ? ((int) $item['ciano']) . '%' : '-' ?> |
-                            M: <?= $item['magenta'] !== null ? ((int) $item['magenta']) . '%' : '-' ?> |
-                            Y: <?= $item['amarelo'] !== null ? ((int) $item['amarelo']) . '%' : '-' ?>
-                        </td>
-                        <td>
-                            <?php if (!empty($item['ok'])): ?>
-                                <span class="ok">OK</span>
-                            <?php else: ?>
-                                <span class="erro">ERRO</span>
-                                <?php if (!empty($item['erro'])): ?>
-                                    <div class="muted"><?= htmlspecialchars((string) $item['erro']) ?></div>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
+                <div class="pagina-hero__chips">
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-print"></i>
+                        <?= e((string) count($relatorio)) ?> impressora(s)
+                    </span>
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <?= e((string) $totalSucesso) ?> atualizada(s)
+                    </span>
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <?= e((string) $totalFalha) ?> falha(s)
+                    </span>
+                </div>
 
-    <div class="acoes">
-        <a href="impressoras.php">Voltar para impressoras</a>
+                <div class="pagina-hero__acoes">
+                    <a href="impressoras.php" class="btn-voltar">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        Voltar para impressoras
+                    </a>
+                </div>
+            </div>
+
+            <aside class="pagina-hero__painel">
+                <span class="pagina-hero__rotulo">Resumo da execucao</span>
+                <strong><?= $totalFalha === 0 ? 'Concluida sem falhas' : 'Concluida com alertas' ?></strong>
+                <small>Use esta tela apenas para conferencia tecnica. A sincronizacao segue sendo gravada da mesma forma no banco e nas rotinas ja existentes.</small>
+
+                <div class="pagina-hero__metricas">
+                    <div class="pagina-hero__metrica">
+                        <span>Taxa de sucesso</span>
+                        <strong><?= e((string) (count($relatorio) > 0 ? (int) round(($totalSucesso / count($relatorio)) * 100) : 0)) ?>%</strong>
+                    </div>
+                    <div class="pagina-hero__metrica">
+                        <span>Status predominante</span>
+                        <strong><?= $totalSucesso >= $totalFalha ? 'Atualizacao salva' : 'Revisar impressoras' ?></strong>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="sincronizacao-relatorio__resumo cards-resumo">
+            <div class="card-resumo card-compra-breve">
+                <div class="icone-resumo"><i class="fa-solid fa-print"></i></div>
+                <div>
+                    <strong><?= e((string) count($relatorio)) ?></strong>
+                    <span>Total processado</span>
+                    <small>Quantidade de impressoras percorridas nesta execucao.</small>
+                </div>
+            </div>
+
+            <div class="card-resumo card-breve">
+                <div class="icone-resumo"><i class="fa-solid fa-circle-check"></i></div>
+                <div>
+                    <strong><?= e((string) $totalSucesso) ?></strong>
+                    <span>Sincronizadas</span>
+                    <small>Impressoras que retornaram dados e atualizaram estado.</small>
+                </div>
+            </div>
+
+            <div class="card-resumo card-vencida">
+                <div class="icone-resumo"><i class="fa-solid fa-circle-xmark"></i></div>
+                <div>
+                    <strong><?= e((string) $totalFalha) ?></strong>
+                    <span>Com falha</span>
+                    <small>Itens que precisam de revisao de rede, status ou autenticacao.</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="bloco-detalhes relatorios-secao">
+            <div class="bloco-detalhes-topo">
+                <div class="icone-bloco">
+                    <i class="fa-solid fa-table"></i>
+                </div>
+                <div>
+                    <h2>Resultado por impressora</h2>
+                    <p>Lista tecnica da execucao, com status salvo, niveis de tinta retornados e possiveis mensagens de erro.</p>
+                </div>
+            </div>
+
+            <div class="tabela-wrapper tabela-wrapper-relatorios">
+                <table class="tabela-relatorios">
+                    <thead>
+                        <tr>
+                            <th>Impressora</th>
+                            <th>IP</th>
+                            <th>Status salvo</th>
+                            <th>Tintas</th>
+                            <th>Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($relatorio)): ?>
+                            <tr>
+                                <td colspan="5" class="vazio">Nenhuma impressora cadastrada.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($relatorio as $item): ?>
+                                <tr>
+                                    <td>
+                                        <div class="celula-impressora">
+                                            <strong><?= e((string) ($item['nome'] ?? '')) ?></strong>
+                                            <span>ID <?= e((string) ((int) ($item['id'] ?? 0))) ?></span>
+                                        </div>
+                                    </td>
+                                    <td><?= e((string) ($item['ip'] ?? '-')) ?></td>
+                                    <td>
+                                        <span class="impressora-pill impressora-pill--status">
+                                            <?= e((string) ($item['status'] ?? 'Desconhecido')) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="sincronizacao-tintas">
+                                            <span>BK <?= $item['preto'] !== null ? e((string) ((int) $item['preto'])) . '%' : '-' ?></span>
+                                            <span>C <?= $item['ciano'] !== null ? e((string) ((int) $item['ciano'])) . '%' : '-' ?></span>
+                                            <span>M <?= $item['magenta'] !== null ? e((string) ((int) $item['magenta'])) . '%' : '-' ?></span>
+                                            <span>Y <?= $item['amarelo'] !== null ? e((string) ((int) $item['amarelo'])) . '%' : '-' ?></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($item['ok'])): ?>
+                                            <span class="sincronizacao-pill sincronizacao-pill--ok">
+                                                <i class="fa-solid fa-circle-check"></i>
+                                                OK
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="sincronizacao-pill sincronizacao-pill--erro">
+                                                <i class="fa-solid fa-circle-xmark"></i>
+                                                ERRO
+                                            </span>
+                                            <?php if (!empty($item['erro'])): ?>
+                                                <div class="celula-impressora">
+                                                    <span><?= e((string) $item['erro']) ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
+    </div>
+</div>
 </body>
 </html>

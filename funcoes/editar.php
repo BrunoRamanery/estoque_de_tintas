@@ -86,10 +86,44 @@ $caminhoCss = '../css/principal.css';
         require __DIR__ . "/../includes/topo_sistema.php";
     ?>
     <div class="container form-container">
-        <div class="form-topo">
-            <h1><i class="fa-solid fa-pen-to-square"></i> Editar Tinta</h1>
-            <p class="subtitulo">Atualize os dados da tinta selecionada.</p>
-        </div>
+        <section class="pagina-hero">
+            <div class="pagina-hero__conteudo">
+                <span class="pagina-hero__eyebrow">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    Edicao de estoque
+                </span>
+                <h1>Editar Tinta</h1>
+                <p>Atualize o registro selecionado com a mesma regra de negocio ja implementada. O objetivo aqui foi apenas melhorar leitura, hierarquia visual e navegacao da tela.</p>
+
+                <div class="pagina-hero__chips">
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-box"></i>
+                        Modelo <?= e($formData['modelo']) ?>
+                    </span>
+                    <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-palette"></i>
+                        Cor <?= e(strtoupper((string) $formData['cor'])) ?>
+                    </span>
+                </div>
+            </div>
+
+            <aside class="pagina-hero__painel">
+                <span class="pagina-hero__rotulo">Contexto do registro</span>
+                <strong><?= e($formData['impressora'] !== '' ? $formData['impressora'] : 'Impressora nao informada') ?></strong>
+                <small>Ao salvar, o sistema continua aplicando as mesmas validacoes e a mesma consolidacao de registros ja existente.</small>
+
+                <div class="pagina-hero__metricas">
+                    <div class="pagina-hero__metrica">
+                        <span>Retorno</span>
+                        <strong><?= e($retornoModelo !== '' ? 'Detalhes do modelo' : 'Painel de tintas') ?></strong>
+                    </div>
+                    <div class="pagina-hero__metrica">
+                        <span>Edicao</span>
+                        <strong>Mesma logica</strong>
+                    </div>
+                </div>
+            </aside>
+        </section>
 
         <?php if (!empty($errors)): ?>
             <ul class="erros">
