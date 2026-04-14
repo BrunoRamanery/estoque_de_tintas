@@ -35,7 +35,17 @@ function sincronizacaoDebugSalvarHtml(): bool
 
 function sincronizacaoDiretorioDebug(): string
 {
-    return __DIR__ . '/../var/logs';
+    return __DIR__ . '/../logs';
+}
+
+function sincronizacaoGravarLinha(string $arquivo, string $linha): void
+{
+    $diretorio = dirname($arquivo);
+    if (!is_dir($diretorio) && !mkdir($diretorio, 0775, true) && !is_dir($diretorio)) {
+        return;
+    }
+
+    @file_put_contents($arquivo, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
 }
 
 function sincronizacaoGravarDebug(bool $ativo, string $arquivo, string $linha): void
@@ -44,12 +54,26 @@ function sincronizacaoGravarDebug(bool $ativo, string $arquivo, string $linha): 
         return;
     }
 
-    $diretorio = dirname($arquivo);
-    if (!is_dir($diretorio) && !mkdir($diretorio, 0775, true) && !is_dir($diretorio)) {
-        return;
-    }
+    sincronizacaoGravarLinha($arquivo, $linha);
+}
 
-    @file_put_contents($arquivo, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+function sincronizacaoNormalizarNomeArquivo(string $valor, string $fallback = 'sem_ip'): string
+{
+    $normalizado = preg_replace('/[^0-9A-Za-z._-]/', '_', trim($valor)) ?? '';
+    $normalizado = trim($normalizado, '._-');
+    return $normalizado !== '' ? $normalizado : $fallback;
+}
+
+function sincronizacaoCriarLogger(string $arquivo): callable
+{
+    return static function (string $linha) use ($arquivo): void {
+        sincronizacaoGravarLinha($arquivo, $linha);
+    };
+}
+
+function sincronizacaoBoolTexto(bool $valor): string
+{
+    return $valor ? 'SIM' : 'NAO';
 }
 
 function normalizarTextoParaBusca($texto): string
@@ -120,11 +144,13 @@ function identificarChaveContadorUso(string $rotuloNormalizado): ?string
     return null;
 }
 
-function extrairBlocoInformacoesUso(string $html): ?string
+function extrairBlocoPorLegenda(string $html, array $legendasAceitas): ?string
 {
     if (!preg_match_all('/<fieldset\b[^>]*>(.*?)<\/fieldset>/is', $html, $fieldsets, PREG_SET_ORDER)) {
         return null;
     }
+
+    $legendasNormalizadas = array_map('normalizarTextoParaBusca', $legendasAceitas);
 
     foreach ($fieldsets as $fieldset) {
         $bloco = (string) ($fieldset[0] ?? '');
@@ -137,16 +163,25 @@ function extrairBlocoInformacoesUso(string $html): ?string
         }
 
         $legendNormalizada = normalizarTextoParaBusca($legendMatch[1] ?? '');
-        if (
-            str_contains($legendNormalizada, 'informacoes da impressao')
-            || str_contains($legendNormalizada, 'estado de utilizacao')
-            || str_contains($legendNormalizada, 'informacoes de manutencao')
-        ) {
-            return $bloco;
+        foreach ($legendasNormalizadas as $legendaAceita) {
+            if ($legendaAceita !== '' && str_contains($legendNormalizada, $legendaAceita)) {
+                return $bloco;
+            }
         }
     }
 
     return null;
+}
+
+function extrairBlocoInformacoesUso(string $html): ?string
+{
+    return extrairBlocoPorLegenda($html, [
+        'informacoes da impressao',
+        'estado de utilizacao',
+        'informacoes de manutencao',
+        'print information',
+        'maintenance information',
+    ]);
 }
 
 function extrairContadoresUsoPorRotulo(string $html): array
@@ -474,6 +509,29 @@ function normalizarTextoStatusImpressora($texto)
     return trim($texto);
 }
 
+function normalizarStatusImpressora($status): string
+{
+    $status = normalizarTextoStatusImpressora($status);
+    if ($status === '') {
+        return '';
+    }
+
+    $normalizado = normalizarTextoParaBusca($status);
+    if (str_contains($normalizado, 'disponivel') || str_contains($normalizado, 'ready')) {
+        return 'Disponível';
+    }
+
+    if (str_contains($normalizado, 'ocupado') || str_contains($normalizado, 'busy')) {
+        return 'Ocupado';
+    }
+
+    if (str_contains($normalizado, 'offline')) {
+        return 'offline';
+    }
+
+    return $status;
+}
+
 function extrairStatusImpressora($html)
 {
     $conteudo = (string) $html;
@@ -481,34 +539,34 @@ function extrairStatusImpressora($html)
         return 'Desconhecido';
     }
 
-    // Restringe a busca para o bloco do "Estado da impressora".
-    $padraoBloco = '/<legend[^>]*>\s*Estado\s+da\s+impressora\s*<\/legend>(.*?)(?:<\/fieldset>|<legend\b|$)/is';
-    if (!preg_match($padraoBloco, $conteudo, $blocoMatch)) {
+    $blocoEstado = extrairBlocoPorLegenda($conteudo, [
+        'estado da impressora',
+        'printer status',
+    ]);
+    if ($blocoEstado === null) {
         return 'Desconhecido';
     }
 
-    $blocoEstado = (string) ($blocoMatch[1] ?? '');
-
     if (preg_match('/<li\b[^>]*class=(["\'])[^"\']*\bvalue\b[^"\']*\1[^>]*>(.*?)<\/li>/is', $blocoEstado, $valorMatch)) {
-        $status = normalizarTextoStatusImpressora($valorMatch[2] ?? '');
+        $status = normalizarStatusImpressora($valorMatch[2] ?? '');
         if ($status !== '') {
             return $status;
         }
     }
 
     if (preg_match('/<div\b[^>]*class=(["\'])[^"\']*\bpreserve-white-space\b[^"\']*\1[^>]*>(.*?)<\/div>/is', $blocoEstado, $divMatch)) {
-        $status = normalizarTextoStatusImpressora($divMatch[2] ?? '');
+        $status = normalizarStatusImpressora($divMatch[2] ?? '');
         if ($status !== '') {
             return $status;
         }
     }
 
     $textoBlocoNormalizado = normalizarTextoParaBusca($blocoEstado);
-    if (str_contains($textoBlocoNormalizado, 'disponivel')) {
-        return 'Disponivel';
+    if (str_contains($textoBlocoNormalizado, 'disponivel') || str_contains($textoBlocoNormalizado, 'ready')) {
+        return 'Disponível';
     }
 
-    if (str_contains($textoBlocoNormalizado, 'ocupado')) {
+    if (str_contains($textoBlocoNormalizado, 'ocupado') || str_contains($textoBlocoNormalizado, 'busy')) {
         return 'Ocupado';
     }
 
@@ -666,202 +724,674 @@ function detectarColunaUltimaAtualizacao(mysqli $conn): ?string
     return $encontrou ? 'ultima_atualizacao' : null;
 }
 
+function sincronizacaoRotasPorContexto(string $contexto): array
+{
+    if ($contexto === 'uso') {
+        return ['/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP'];
+    }
+
+    return ['/PRESENTATION/ADVANCED/INFO_PRTINFO/TOP'];
+}
+
+function montarUrlImpressora(string $ip, string $rota, string $protocolo = 'https'): string
+{
+    $ipNormalizado = trim($ip);
+    $rotaNormalizada = '/' . ltrim(trim($rota), '/');
+    $protocoloNormalizado = strtolower(trim($protocolo)) === 'http' ? 'http' : 'https';
+    return $protocoloNormalizado . '://' . $ipNormalizado . $rotaNormalizada;
+}
+
 function montarUrlInfoImpressora(string $ip, string $protocolo = 'https'): string
 {
-    $protocoloNormalizado = strtolower(trim($protocolo)) === 'http' ? 'http' : 'https';
-    return $protocoloNormalizado . '://' . $ip . '/PRESENTATION/ADVANCED/INFO_PRTINFO/TOP';
+    return montarUrlImpressora($ip, '/PRESENTATION/ADVANCED/INFO_PRTINFO/TOP', $protocolo);
 }
 
 function executarRequisicaoImpressora(string $url): array
 {
+    if (!function_exists('curl_init')) {
+        return [
+            'url' => $url,
+            'url_final' => $url,
+            'html' => null,
+            'erro' => 'Extensao cURL nao disponivel no PHP.',
+            'errno' => 0,
+            'http' => 0,
+            'redirects' => 0,
+            'content_type' => '',
+            'tempo_total' => 0.0,
+        ];
+    }
+
     $ch = curl_init($url);
     curl_setopt_array($ch, [
-        // Base usada no sincronizar individual
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 5,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT => 10,
+        CURLOPT_TIMEOUT => 15,
         CURLOPT_USERAGENT => 'Mozilla/5.0',
-        // Ajustes para reduzir erro de socket no processamento em lote
         CURLOPT_FRESH_CONNECT => true,
         CURLOPT_FORBID_REUSE => true,
         CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         CURLOPT_PROXY => '',
+        CURLOPT_ENCODING => '',
     ]);
 
     $html = curl_exec($ch);
     $erro = curl_error($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $errno = curl_errno($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $urlFinal = (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+    $redirects = (int) curl_getinfo($ch, CURLINFO_REDIRECT_COUNT);
+    $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $tempoTotal = (float) curl_getinfo($ch, CURLINFO_TOTAL_TIME);
     curl_close($ch);
 
     return [
         'url' => $url,
+        'url_final' => $urlFinal !== '' ? $urlFinal : $url,
         'html' => $html === false ? null : (string) $html,
         'erro' => (string) $erro,
-        'http' => (int) $httpCode,
+        'errno' => (int) $errno,
+        'http' => $httpCode,
+        'redirects' => $redirects,
+        'content_type' => $contentType,
+        'tempo_total' => $tempoTotal,
     ];
 }
 
-function deveTentarFallbackHttp(array $resposta): bool
+function sincronizacaoExplicarErroCurl(array $resposta): string
 {
-    if (($resposta['html'] ?? null) !== null && (int) ($resposta['http'] ?? 0) > 0) {
-        return false;
+    $erro = trim((string) ($resposta['erro'] ?? ''));
+    $erroNormalizado = strtolower($erro);
+    if ($erroNormalizado === '') {
+        return '';
     }
 
-    $erro = strtolower((string) ($resposta['erro'] ?? ''));
-    if ($erro === '') {
-        return (int) ($resposta['http'] ?? 0) === 0;
+    if (str_contains($erroNormalizado, 'timed out')) {
+        return 'Timeout na conexao com a impressora.';
     }
 
-    return str_contains($erro, 'failed to connect')
-        || str_contains($erro, 'timed out')
-        || str_contains($erro, 'ssl')
-        || str_contains($erro, 'bad access');
+    if (str_contains($erroNormalizado, 'ssl')) {
+        return 'Falha SSL ao acessar a impressora.';
+    }
+
+    if (str_contains($erroNormalizado, 'failed to connect') || str_contains($erroNormalizado, 'bad access')) {
+        return 'Falha de conexao com a impressora.';
+    }
+
+    return $erro;
 }
 
-function buscarHtmlInfoImpressora(string $ip): array
+function sincronizacaoRespostaEhLogin(string $html): bool
 {
+    $conteudo = (string) $html;
+    $normalizado = normalizarTextoParaBusca($conteudo);
+
+    if (preg_match('/type\s*=\s*["\']password["\']/i', $conteudo)) {
+        return true;
+    }
+
+    return (str_contains($normalizado, 'administrator password') || str_contains($normalizado, 'admin password'))
+        || (str_contains($normalizado, 'login') && str_contains($normalizado, 'password'))
+        || (str_contains($normalizado, 'senha') && str_contains($normalizado, 'administrador'))
+        || (str_contains($normalizado, 'authentication') && str_contains($normalizado, 'password'));
+}
+
+function sincronizacaoRespostaEhFrameset(string $html): bool
+{
+    $conteudo = strtolower((string) $html);
+
+    return str_contains($conteudo, '<frameset')
+        || preg_match('/<frame\b/i', $conteudo)
+        || (str_contains($conteudo, 'function link') && str_contains($conteudo, 'settimeout("link()'));
+}
+
+function sincronizacaoMarcadoresValidos(string $html, string $contexto): bool
+{
+    $conteudo = (string) $html;
+    $normalizado = normalizarTextoParaBusca($conteudo);
+
+    if ($contexto === 'uso') {
+        return str_contains($normalizado, 'numero total de paginas')
+            || str_contains($normalizado, 'informacoes da impressao')
+            || str_contains($normalizado, 'estado de utilizacao')
+            || str_contains($normalizado, 'numero de paginas ordenadas por tamanho')
+            || str_contains($normalizado, 'a4 letter')
+            || str_contains($normalizado, 'a3 ledger');
+    }
+
+    return str_contains($normalizado, 'estado da impressora')
+        || str_contains($normalizado, 'printer status')
+        || str_contains($normalizado, 'informacoes da impressora')
+        || preg_match('/\btank\b/i', $conteudo)
+        || str_contains($conteudo, 'Ink_K')
+        || str_contains($conteudo, 'Ink_C')
+        || str_contains($conteudo, 'Ink_M')
+        || str_contains($conteudo, 'Ink_Y');
+}
+
+function sincronizacaoClassificarRespostaHtml(string $html, string $contexto): array
+{
+    $conteudo = trim((string) $html);
+    if ($conteudo === '') {
+        return ['ok' => false, 'tipo' => 'vazio', 'motivo' => 'Resposta vazia.'];
+    }
+
+    if (sincronizacaoRespostaEhLogin($conteudo)) {
+        return ['ok' => false, 'tipo' => 'login', 'motivo' => 'Tela de senha/login detectada.'];
+    }
+
+    if (sincronizacaoRespostaEhFrameset($conteudo)) {
+        return ['ok' => false, 'tipo' => 'frameset', 'motivo' => 'Frameset ou redirecionamento intermediario detectado.'];
+    }
+
+    if (!sincronizacaoMarcadoresValidos($conteudo, $contexto)) {
+        return ['ok' => false, 'tipo' => 'invalida', 'motivo' => 'Resposta HTML nao corresponde a pagina esperada.'];
+    }
+
+    return ['ok' => true, 'tipo' => 'ok', 'motivo' => 'Resposta valida.'];
+}
+
+function buscarPaginaImpressora(string $ip, array $rotas, string $contexto, ?callable $logger = null, ?string $arquivoHtml = null, bool $salvarHtml = false): array
+{
+    $ipNormalizado = trim($ip);
+    $resultadoFalha = [
+        'ok' => false,
+        'contexto' => $contexto,
+        'html' => null,
+        'url' => null,
+        'url_final' => null,
+        'protocolo' => null,
+        'fallback_http' => false,
+        'http' => 0,
+        'motivo_falha' => 'Falha desconhecida.',
+        'tipo_falha' => 'desconhecida',
+        'tentativas' => [],
+    ];
+
+    if ($ipNormalizado === '') {
+        $resultadoFalha['motivo_falha'] = 'IP vazio.';
+        $resultadoFalha['tipo_falha'] = 'ip_vazio';
+        return $resultadoFalha;
+    }
+
     if (!function_exists('curl_init')) {
+        $resultadoFalha['motivo_falha'] = 'Extensao cURL nao disponivel no PHP.';
+        $resultadoFalha['tipo_falha'] = 'curl_indisponivel';
+        return $resultadoFalha;
+    }
+
+    $rotasNormalizadas = array_values(array_filter(array_map(static function ($rota): string {
+        return '/' . ltrim(trim((string) $rota), '/');
+    }, $rotas)));
+
+    $tentativas = [];
+    $ultimaFalha = $resultadoFalha;
+
+    foreach (['https', 'http'] as $protocolo) {
+        foreach ($rotasNormalizadas as $rota) {
+            $url = montarUrlImpressora($ipNormalizado, $rota, $protocolo);
+            if ($logger) {
+                $logger(sprintf('[%s] Tentando URL: %s', strtoupper($contexto), $url));
+            }
+
+            $resposta = executarRequisicaoImpressora($url);
+            $tentativa = [
+                'url' => $url,
+                'url_final' => $resposta['url_final'] ?? $url,
+                'protocolo' => $protocolo,
+                'http' => (int) ($resposta['http'] ?? 0),
+                'erro' => trim((string) ($resposta['erro'] ?? '')),
+                'tipo_falha' => '',
+                'motivo' => '',
+                'tempo_total' => (float) ($resposta['tempo_total'] ?? 0.0),
+                'redirects' => (int) ($resposta['redirects'] ?? 0),
+            ];
+
+            if ($tentativa['erro'] !== '') {
+                $tentativa['tipo_falha'] = 'curl';
+                $tentativa['motivo'] = sincronizacaoExplicarErroCurl($resposta);
+            } elseif ($tentativa['http'] < 200 || $tentativa['http'] >= 400) {
+                $tentativa['tipo_falha'] = 'http';
+                $tentativa['motivo'] = 'HTTP ' . $tentativa['http'] . '.';
+            } else {
+                $classificacaoHtml = sincronizacaoClassificarRespostaHtml((string) ($resposta['html'] ?? ''), $contexto);
+                $tentativa['tipo_falha'] = $classificacaoHtml['tipo'];
+                $tentativa['motivo'] = $classificacaoHtml['motivo'];
+
+                if (!empty($classificacaoHtml['ok'])) {
+                    if ($logger) {
+                        $logger(sprintf(
+                            '[%s] URL valida: %s | protocolo=%s | http=%d | redirects=%d | fallback_http=%s',
+                            strtoupper($contexto),
+                            $url,
+                            $protocolo,
+                            $tentativa['http'],
+                            $tentativa['redirects'],
+                            sincronizacaoBoolTexto($protocolo === 'http')
+                        ));
+                    }
+
+                    if ($salvarHtml && $arquivoHtml !== null && $arquivoHtml !== '') {
+                        sincronizacaoGravarLinha($arquivoHtml, (string) ($resposta['html'] ?? ''));
+                    }
+
+                    $tentativas[] = $tentativa;
+                    return [
+                        'ok' => true,
+                        'contexto' => $contexto,
+                        'html' => (string) ($resposta['html'] ?? ''),
+                        'url' => $url,
+                        'url_final' => $resposta['url_final'] ?? $url,
+                        'protocolo' => $protocolo,
+                        'fallback_http' => $protocolo === 'http',
+                        'http' => $tentativa['http'],
+                        'motivo_falha' => '',
+                        'tipo_falha' => '',
+                        'tentativas' => $tentativas,
+                    ];
+                }
+            }
+
+            $tentativas[] = $tentativa;
+
+            if ($logger) {
+                $logger(sprintf(
+                    '[%s] URL falhou: %s | protocolo=%s | http=%d | erro=%s | motivo=%s',
+                    strtoupper($contexto),
+                    $url,
+                    $protocolo,
+                    $tentativa['http'],
+                    $tentativa['erro'] !== '' ? $tentativa['erro'] : 'nenhum',
+                    $tentativa['motivo']
+                ));
+            }
+
+            $ultimaFalha = [
+                'ok' => false,
+                'contexto' => $contexto,
+                'html' => null,
+                'url' => $url,
+                'url_final' => $resposta['url_final'] ?? $url,
+                'protocolo' => $protocolo,
+                'fallback_http' => $protocolo === 'http',
+                'http' => $tentativa['http'],
+                'motivo_falha' => $tentativa['motivo'] !== '' ? $tentativa['motivo'] : 'Falha ao acessar a URL.',
+                'tipo_falha' => $tentativa['tipo_falha'] !== '' ? $tentativa['tipo_falha'] : 'desconhecida',
+                'tentativas' => $tentativas,
+            ];
+
+            if ($tentativa['tipo_falha'] === 'login') {
+                return $ultimaFalha;
+            }
+        }
+    }
+
+    return $ultimaFalha;
+}
+
+function buscarHtmlInfoImpressora(string $ip, ?callable $logger = null): array
+{
+    $arquivoHtml = null;
+    if (sincronizacaoDebugSalvarHtml()) {
+        $arquivoHtml = sincronizacaoDiretorioDebug() . '/debug_status_' . sincronizacaoNormalizarNomeArquivo($ip) . '.html';
+    }
+
+    return buscarPaginaImpressora(
+        $ip,
+        sincronizacaoRotasPorContexto('status_tinta'),
+        'status_tinta',
+        $logger,
+        $arquivoHtml,
+        sincronizacaoDebugSalvarHtml()
+    );
+}
+
+function sincronizacaoClassificarBlocoStatusTinta(?string $status, array $tintas): array
+{
+    $statusValido = $status !== null && trim($status) !== '' && normalizarTextoParaBusca($status) !== 'desconhecido';
+    $tintasValidas = 0;
+    foreach ($tintas as $valor) {
+        if ($valor !== null) {
+            $tintasValidas++;
+        }
+    }
+
+    if ($statusValido && $tintasValidas === 4) {
+        return ['classificacao' => 'sucesso', 'status_lido' => true, 'tinta_lida' => true];
+    }
+
+    if ($statusValido || $tintasValidas > 0) {
+        return ['classificacao' => 'parcial', 'status_lido' => $statusValido, 'tinta_lida' => $tintasValidas > 0];
+    }
+
+    return ['classificacao' => 'falha', 'status_lido' => false, 'tinta_lida' => false];
+}
+
+function coletarStatusETintaImpressora(string $ip, ?callable $logger = null): array
+{
+    $pagina = buscarHtmlInfoImpressora($ip, $logger);
+    if (empty($pagina['ok'])) {
         return [
-            'url' => montarUrlInfoImpressora($ip, 'https'),
-            'html' => null,
-            'erro' => 'Extensao cURL nao disponivel no PHP.',
-            'http' => 0,
+            'ok' => false,
+            'parcial' => false,
+            'classificacao' => 'falha',
+            'motivo' => (string) ($pagina['motivo_falha'] ?? 'Falha ao acessar pagina de status/tinta.'),
+            'status' => null,
+            'tinta_preto' => null,
+            'tinta_ciano' => null,
+            'tinta_magenta' => null,
+            'tinta_amarelo' => null,
+            'status_lido' => false,
+            'tinta_lida' => false,
+            'meta' => $pagina,
         ];
     }
 
-    $tentativaHttps = executarRequisicaoImpressora(montarUrlInfoImpressora($ip, 'https'));
-    if (($tentativaHttps['erro'] ?? '') === '' && ($tentativaHttps['html'] ?? null) !== null) {
-        return $tentativaHttps;
+    $html = (string) ($pagina['html'] ?? '');
+    $status = extrairStatusImpressora($html);
+    $statusValido = trim($status) !== '' && normalizarTextoParaBusca($status) !== 'desconhecido';
+    if (!$statusValido) {
+        $status = null;
     }
 
-    if (!deveTentarFallbackHttp($tentativaHttps)) {
-        return $tentativaHttps;
+    $dadosTintas = [
+        'tinta_preto' => extrairNivelPorCor($html, 'BK'),
+        'tinta_ciano' => extrairNivelPorCor($html, 'C'),
+        'tinta_magenta' => extrairNivelPorCor($html, 'M'),
+        'tinta_amarelo' => extrairNivelPorCor($html, 'Y'),
+    ];
+
+    $classificacao = sincronizacaoClassificarBlocoStatusTinta($status, $dadosTintas);
+    $motivo = '';
+    if ($classificacao['classificacao'] === 'parcial') {
+        $motivo = 'Pagina de status/tinta acessada, mas o parser retornou dados parciais.';
+    } elseif ($classificacao['classificacao'] === 'falha') {
+        $motivo = 'Pagina de status/tinta acessada, mas o parser nao encontrou dados validos.';
     }
 
-    $tentativaHttp = executarRequisicaoImpressora(montarUrlInfoImpressora($ip, 'http'));
-    if (($tentativaHttp['erro'] ?? '') === '' && ($tentativaHttp['html'] ?? null) !== null) {
-        return $tentativaHttp;
+    if ($logger) {
+        $logger('Status lido: ' . sincronizacaoBoolTexto($classificacao['status_lido']));
+        $logger('Tinta lida: ' . sincronizacaoBoolTexto($classificacao['tinta_lida']));
+        $logger('Status extraido: ' . ($status !== null ? $status : 'N/D'));
+        $logger('Tintas extraidas: ' . json_encode($dadosTintas, JSON_UNESCAPED_UNICODE));
     }
 
-    $erroHttps = trim((string) ($tentativaHttps['erro'] ?? ''));
-    $erroHttp = trim((string) ($tentativaHttp['erro'] ?? ''));
-    if ($erroHttps !== '' && $erroHttp !== '') {
-        $tentativaHttp['erro'] = 'HTTPS: ' . $erroHttps . ' | HTTP: ' . $erroHttp;
-    } elseif ($erroHttps !== '' && $erroHttp === '') {
-        $tentativaHttp['erro'] = 'HTTPS: ' . $erroHttps;
-    }
-
-    return $tentativaHttp;
+    return [
+        'ok' => $classificacao['classificacao'] === 'sucesso',
+        'parcial' => $classificacao['classificacao'] === 'parcial',
+        'classificacao' => $classificacao['classificacao'],
+        'motivo' => $motivo,
+        'status' => $status,
+        'tinta_preto' => $dadosTintas['tinta_preto'],
+        'tinta_ciano' => $dadosTintas['tinta_ciano'],
+        'tinta_magenta' => $dadosTintas['tinta_magenta'],
+        'tinta_amarelo' => $dadosTintas['tinta_amarelo'],
+        'status_lido' => $classificacao['status_lido'],
+        'tinta_lida' => $classificacao['tinta_lida'],
+        'meta' => $pagina,
+    ];
 }
 
-function buscarUsoImpressora($ip)
+function sincronizacaoPreencherContadoresFaltantes(array $base, array $fallback): array
+{
+    foreach (['total', 'pb', 'cor'] as $chave) {
+        if ($base[$chave] === null && $fallback[$chave] !== null) {
+            $base[$chave] = (int) $fallback[$chave];
+        }
+    }
+
+    return $base;
+}
+
+function sincronizacaoAlgumValorInteiro(array $dados, array $campos): bool
+{
+    foreach ($campos as $campo) {
+        if (array_key_exists($campo, $dados) && $dados[$campo] !== null && is_numeric($dados[$campo])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function buscarUsoImpressora($ip, ?callable $logger = null): array
 {
     $ipNormalizado = trim((string) $ip);
-    $url = "https://$ipNormalizado/PRESENTATION/ADVANCED/INFO_MENTINFO/TOP";
-    $debugAtivo = sincronizacaoDebugAtivo($ipNormalizado);
-    $nomeIpArquivo = preg_replace('/[^0-9A-Za-z._-]/', '_', $ipNormalizado) ?: 'sem_ip';
-    $diretorioDebug = sincronizacaoDiretorioDebug();
-    $arquivoLog = $diretorioDebug . '/debug_uso_' . $nomeIpArquivo . '.log';
-    $arquivoHtml = $diretorioDebug . '/debug_uso_' . $nomeIpArquivo . '.html';
-
-    $gravarDebug = static function (string $linha) use ($debugAtivo, $arquivoLog): void {
-        sincronizacaoGravarDebug($debugAtivo, $arquivoLog, $linha);
-    };
-
-    if ($debugAtivo) {
-        $gravarDebug(str_repeat('=', 70));
-        $gravarDebug('Data/Hora: ' . date('Y-m-d H:i:s'));
-        $gravarDebug('IP teste: ' . $ipNormalizado);
-        $gravarDebug('URL: ' . $url);
+    $arquivoHtml = null;
+    if (sincronizacaoDebugSalvarHtml()) {
+        $arquivoHtml = sincronizacaoDiretorioDebug() . '/debug_uso_' . sincronizacaoNormalizarNomeArquivo($ipNormalizado) . '.html';
     }
 
-    if (!function_exists('curl_init')) {
-        $gravarDebug('Acesso URL: NAO');
-        $gravarDebug('Erro cURL: extensao cURL nao disponivel no PHP.');
-        return null;
+    $pagina = buscarPaginaImpressora(
+        $ipNormalizado,
+        sincronizacaoRotasPorContexto('uso'),
+        'uso',
+        $logger,
+        $arquivoHtml,
+        sincronizacaoDebugSalvarHtml()
+    );
+
+    if (empty($pagina['ok'])) {
+        return [
+            'ok' => false,
+            'parcial' => false,
+            'classificacao' => 'falha',
+            'motivo' => (string) ($pagina['motivo_falha'] ?? 'Falha ao acessar pagina de uso.'),
+            'dados' => [
+                'total' => null,
+                'pb' => null,
+                'cor' => null,
+                'a4_pb_simples' => null,
+                'a4_cor_simples' => null,
+                'a4_pb_duplex' => null,
+                'a4_cor_duplex' => null,
+                'a3_pb_simples' => null,
+                'a3_cor_simples' => null,
+                'a3_pb_duplex' => null,
+                'a3_cor_duplex' => null,
+            ],
+            'paginas_lidas' => false,
+            'a4_lido' => false,
+            'a3_lido' => false,
+            'meta' => $pagina,
+        ];
     }
 
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_USERAGENT => 'Mozilla/5.0',
-    ]);
-
-    $html = curl_exec($ch);
-    $erroCurl = curl_error($ch);
-    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    $conteudoRetornado = $html === false || $html === null ? '' : (string) $html;
-    $acessoOk = $conteudoRetornado !== '' && $erroCurl === '' && $httpCode >= 200 && $httpCode < 400;
-
-    $gravarDebug('Acesso URL: ' . ($acessoOk ? 'SIM' : 'NAO'));
-    $gravarDebug('HTTP code: ' . $httpCode);
-    $gravarDebug('Erro cURL: ' . ($erroCurl !== '' ? $erroCurl : 'nenhum'));
-    $gravarDebug('Retorno (500 primeiros chars):');
-    $gravarDebug(substr($conteudoRetornado, 0, 500));
-
-    if ($acessoOk && sincronizacaoDebugSalvarHtml()) {
-        sincronizacaoGravarDebug(true, $arquivoHtml, $conteudoRetornado);
-        $gravarDebug('HTML salvo em: ' . $arquivoHtml);
-    }
-
-    if (!$acessoOk) {
-        return null;
-    }
-
-    $preencherFaltantes = static function (array $base, array $fallback): array {
-        foreach (['total', 'pb', 'cor'] as $chave) {
-            if ($base[$chave] === null && $fallback[$chave] !== null) {
-                $base[$chave] = (int) $fallback[$chave];
-            }
-        }
-
-        return $base;
-    };
-
+    $conteudoRetornado = (string) ($pagina['html'] ?? '');
     $blocoPreferencial = extrairBlocoInformacoesUso($conteudoRetornado);
     $origem = $blocoPreferencial !== null ? 'fieldset' : 'html_completo';
     $contadores = extrairContadoresUsoPorRotulo($blocoPreferencial ?? $conteudoRetornado);
 
     if (in_array(null, $contadores, true) && $blocoPreferencial !== null) {
-        $contadores = $preencherFaltantes($contadores, extrairContadoresUsoPorRotulo($conteudoRetornado));
+        $contadores = sincronizacaoPreencherContadoresFaltantes($contadores, extrairContadoresUsoPorRotulo($conteudoRetornado));
         $origem .= '+fallback_html';
     }
 
     if (in_array(null, $contadores, true)) {
-        $contadores = $preencherFaltantes($contadores, extrairContadoresUsoPorOrdem($blocoPreferencial ?? $conteudoRetornado));
+        $contadores = sincronizacaoPreencherContadoresFaltantes($contadores, extrairContadoresUsoPorOrdem($blocoPreferencial ?? $conteudoRetornado));
         $origem .= '+fallback_ordem';
     }
 
-    $gravarDebug('Origem dos contadores: ' . $origem);
-    $gravarDebug('Contadores extraidos: ' . var_export($contadores, true));
+    $a4Letter = extrairA4LetterOrdenadoPorTamanho($conteudoRetornado, $logger);
+    $a3Ledger = extrairA3LedgerOrdenadoPorTamanho($conteudoRetornado, $logger);
 
-    $a4Letter = extrairA4LetterOrdenadoPorTamanho($conteudoRetornado, $debugAtivo ? $gravarDebug : null);
-    $a3Ledger = extrairA3LedgerOrdenadoPorTamanho($conteudoRetornado, $debugAtivo ? $gravarDebug : null);
-
-    return [
+    $dados = [
         'total' => $contadores['total'] !== null ? (int) $contadores['total'] : null,
         'pb' => $contadores['pb'] !== null ? (int) $contadores['pb'] : null,
         'cor' => $contadores['cor'] !== null ? (int) $contadores['cor'] : null,
-        'a4_pb_simples' => $a4Letter['a4_pb_simples'] ?? null,
-        'a4_cor_simples' => $a4Letter['a4_cor_simples'] ?? null,
-        'a4_pb_duplex' => $a4Letter['a4_pb_duplex'] ?? null,
-        'a4_cor_duplex' => $a4Letter['a4_cor_duplex'] ?? null,
-        'a3_pb_simples' => $a3Ledger['a3_pb_simples'] ?? null,
-        'a3_cor_simples' => $a3Ledger['a3_cor_simples'] ?? null,
-        'a3_pb_duplex' => $a3Ledger['a3_pb_duplex'] ?? null,
-        'a3_cor_duplex' => $a3Ledger['a3_cor_duplex'] ?? null,
+        'a4_pb_simples' => isset($a4Letter['a4_pb_simples']) && is_numeric($a4Letter['a4_pb_simples']) ? (int) $a4Letter['a4_pb_simples'] : null,
+        'a4_cor_simples' => isset($a4Letter['a4_cor_simples']) && is_numeric($a4Letter['a4_cor_simples']) ? (int) $a4Letter['a4_cor_simples'] : null,
+        'a4_pb_duplex' => isset($a4Letter['a4_pb_duplex']) && is_numeric($a4Letter['a4_pb_duplex']) ? (int) $a4Letter['a4_pb_duplex'] : null,
+        'a4_cor_duplex' => isset($a4Letter['a4_cor_duplex']) && is_numeric($a4Letter['a4_cor_duplex']) ? (int) $a4Letter['a4_cor_duplex'] : null,
+        'a3_pb_simples' => isset($a3Ledger['a3_pb_simples']) && is_numeric($a3Ledger['a3_pb_simples']) ? (int) $a3Ledger['a3_pb_simples'] : null,
+        'a3_cor_simples' => isset($a3Ledger['a3_cor_simples']) && is_numeric($a3Ledger['a3_cor_simples']) ? (int) $a3Ledger['a3_cor_simples'] : null,
+        'a3_pb_duplex' => isset($a3Ledger['a3_pb_duplex']) && is_numeric($a3Ledger['a3_pb_duplex']) ? (int) $a3Ledger['a3_pb_duplex'] : null,
+        'a3_cor_duplex' => isset($a3Ledger['a3_cor_duplex']) && is_numeric($a3Ledger['a3_cor_duplex']) ? (int) $a3Ledger['a3_cor_duplex'] : null,
+    ];
+
+    $paginasLidas = $dados['total'] !== null && $dados['pb'] !== null && $dados['cor'] !== null;
+    $a4Lido = sincronizacaoAlgumValorInteiro($dados, ['a4_pb_simples', 'a4_cor_simples', 'a4_pb_duplex', 'a4_cor_duplex']);
+    $a3Lido = sincronizacaoAlgumValorInteiro($dados, ['a3_pb_simples', 'a3_cor_simples', 'a3_pb_duplex', 'a3_cor_duplex']);
+
+    $classificacao = 'falha';
+    $motivo = 'Pagina de uso acessada, mas o parser nao encontrou dados validos.';
+    if ($paginasLidas && ($a4Lido || $a3Lido)) {
+        $classificacao = 'sucesso';
+        $motivo = '';
+    } elseif ($paginasLidas || $a4Lido || $a3Lido) {
+        $classificacao = 'parcial';
+        $motivo = 'Pagina de uso acessada, mas o parser retornou dados parciais.';
+    }
+
+    if ($logger) {
+        $logger('Origem dos contadores de uso: ' . $origem);
+        $logger('Paginas lidas: ' . sincronizacaoBoolTexto($paginasLidas));
+        $logger('A4 lido: ' . sincronizacaoBoolTexto($a4Lido));
+        $logger('A3 lido: ' . sincronizacaoBoolTexto($a3Lido));
+        $logger('Uso extraido: ' . json_encode($dados, JSON_UNESCAPED_UNICODE));
+    }
+
+    return [
+        'ok' => $classificacao === 'sucesso',
+        'parcial' => $classificacao === 'parcial',
+        'classificacao' => $classificacao,
+        'motivo' => $motivo,
+        'dados' => $dados,
+        'paginas_lidas' => $paginasLidas,
+        'a4_lido' => $a4Lido,
+        'a3_lido' => $a3Lido,
+        'meta' => $pagina,
     ];
 }
+function sincronizacaoCamposNumericosUso(): array
+{
+    return [
+        'paginas_total',
+        'paginas_pb',
+        'paginas_cor',
+        'a4_pb_simples',
+        'a4_cor_simples',
+        'a4_pb_duplex',
+        'a4_cor_duplex',
+        'a3_pb_simples',
+        'a3_cor_simples',
+        'a3_pb_duplex',
+        'a3_cor_duplex',
+    ];
+}
+
+function buscarSnapshotImpressora(mysqli $conn, int $id): ?array
+{
+    $sql = 'SELECT status_impressora, tinta_preto, tinta_ciano, tinta_magenta, tinta_amarelo,
+                   paginas_total, paginas_pb, paginas_cor,
+                   a4_pb_simples, a4_cor_simples, a4_pb_duplex, a4_cor_duplex,
+                   a3_pb_simples, a3_cor_simples, a3_pb_duplex, a3_cor_duplex,
+                   ultima_atualizacao
+            FROM impressoras
+            WHERE id = ?';
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc() ?: null;
+    $stmt->close();
+
+    if (!$row) {
+        return null;
+    }
+
+    foreach (array_merge(
+        ['tinta_preto', 'tinta_ciano', 'tinta_magenta', 'tinta_amarelo'],
+        sincronizacaoCamposNumericosUso()
+    ) as $campoNumerico) {
+        if (array_key_exists($campoNumerico, $row)) {
+            $row[$campoNumerico] = ($row[$campoNumerico] !== null && $row[$campoNumerico] !== '') ? (int) $row[$campoNumerico] : null;
+        }
+    }
+
+    $row['status_impressora'] = trim((string) ($row['status_impressora'] ?? ''));
+    $row['ultima_atualizacao'] = trim((string) ($row['ultima_atualizacao'] ?? ''));
+
+    return $row;
+}
+
+function atualizarCamposImpressora(
+    mysqli $conn,
+    int $id,
+    array $campos,
+    ?string $colunaUltimaAtualizacao = null,
+    bool $atualizarUltimaAtualizacao = false
+): array {
+    if ($id <= 0) {
+        return ['ok' => false, 'erro' => 'ID invalido para update.', 'campos' => []];
+    }
+
+    $colunasPermitidas = array_flip(array_merge(
+        ['status_impressora', 'tinta_preto', 'tinta_ciano', 'tinta_magenta', 'tinta_amarelo'],
+        sincronizacaoCamposNumericosUso()
+    ));
+
+    $set = [];
+    $tipos = '';
+    $parametros = [];
+    $camposAplicados = [];
+
+    foreach ($campos as $coluna => $valor) {
+        if (!isset($colunasPermitidas[$coluna]) || $valor === null) {
+            continue;
+        }
+
+        $set[] = $coluna . ' = ?';
+        $camposAplicados[] = $coluna;
+
+        if ($coluna === 'status_impressora') {
+            $tipos .= 's';
+            $parametros[] = (string) $valor;
+        } else {
+            $tipos .= 'i';
+            $parametros[] = (int) $valor;
+        }
+    }
+
+    if (empty($set) && !($atualizarUltimaAtualizacao && $colunaUltimaAtualizacao !== null && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $colunaUltimaAtualizacao))) {
+        return ['ok' => false, 'erro' => 'Nenhum campo valido para atualizar.', 'campos' => []];
+    }
+
+    if ($atualizarUltimaAtualizacao && $colunaUltimaAtualizacao !== null && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $colunaUltimaAtualizacao)) {
+        $set[] = $colunaUltimaAtualizacao . ' = NOW()';
+    }
+
+    $sql = 'UPDATE impressoras SET ' . implode(', ', $set) . ' WHERE id = ?';
+    $tipos .= 'i';
+    $parametros[] = $id;
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return ['ok' => false, 'erro' => 'Falha ao preparar update da impressora: ' . $conn->error, 'campos' => $camposAplicados];
+    }
+
+    $stmt->bind_param($tipos, ...$parametros);
+    $ok = $stmt->execute();
+    $erro = $stmt->error;
+    $stmt->close();
+
+    return [
+        'ok' => (bool) $ok,
+        'erro' => $ok ? '' : ('Falha ao executar update: ' . $erro),
+        'campos' => $camposAplicados,
+        'sql' => $sql,
+    ];
+}
+
 function atualizarDadosImpressora(
     mysqli $conn,
     int $id,
@@ -872,33 +1402,21 @@ function atualizarDadosImpressora(
     ?int $amarelo,
     ?string $colunaUltimaAtualizacao = null
 ): array {
-    $sql = "UPDATE impressoras
-            SET status_impressora = ?,
-                tinta_preto = ?,
-                tinta_ciano = ?,
-                tinta_magenta = ?,
-                tinta_amarelo = ?";
-
-    if ($colunaUltimaAtualizacao !== null && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $colunaUltimaAtualizacao)) {
-        $sql .= ", " . $colunaUltimaAtualizacao . " = NOW()";
+    $campos = ['status_impressora' => $status];
+    if ($preto !== null) {
+        $campos['tinta_preto'] = $preto;
+    }
+    if ($ciano !== null) {
+        $campos['tinta_ciano'] = $ciano;
+    }
+    if ($magenta !== null) {
+        $campos['tinta_magenta'] = $magenta;
+    }
+    if ($amarelo !== null) {
+        $campos['tinta_amarelo'] = $amarelo;
     }
 
-    $sql .= ' WHERE id = ?';
-
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        return ['ok' => false, 'erro' => 'Falha ao preparar update da impressora.'];
-    }
-
-    $stmt->bind_param('siiiii', $status, $preto, $ciano, $magenta, $amarelo, $id);
-    $ok = $stmt->execute();
-    $erro = $stmt->error;
-    $stmt->close();
-
-    return [
-        'ok' => (bool) $ok,
-        'erro' => $ok ? '' : ('Falha ao executar update: ' . $erro),
-    ];
+    return atualizarCamposImpressora($conn, $id, $campos, $colunaUltimaAtualizacao, $colunaUltimaAtualizacao !== null);
 }
 
 function inserirHistoricoImpressora(
@@ -991,6 +1509,101 @@ function inserirHistoricoImpressora(
     ];
 }
 
+function inserirHistoricoImpressoraPorSnapshot(mysqli $conn, int $impressoraId, array $snapshot, string $statusHistorico): array
+{
+    return inserirHistoricoImpressora(
+        $conn,
+        $impressoraId,
+        isset($snapshot['paginas_total']) ? (int) $snapshot['paginas_total'] : null,
+        isset($snapshot['paginas_pb']) ? (int) $snapshot['paginas_pb'] : null,
+        isset($snapshot['paginas_cor']) ? (int) $snapshot['paginas_cor'] : null,
+        isset($snapshot['a4_pb_simples']) ? (int) $snapshot['a4_pb_simples'] : null,
+        isset($snapshot['a4_cor_simples']) ? (int) $snapshot['a4_cor_simples'] : null,
+        isset($snapshot['a4_pb_duplex']) ? (int) $snapshot['a4_pb_duplex'] : null,
+        isset($snapshot['a4_cor_duplex']) ? (int) $snapshot['a4_cor_duplex'] : null,
+        isset($snapshot['a3_pb_simples']) ? (int) $snapshot['a3_pb_simples'] : null,
+        isset($snapshot['a3_cor_simples']) ? (int) $snapshot['a3_cor_simples'] : null,
+        isset($snapshot['a3_pb_duplex']) ? (int) $snapshot['a3_pb_duplex'] : null,
+        isset($snapshot['a3_cor_duplex']) ? (int) $snapshot['a3_cor_duplex'] : null,
+        isset($snapshot['tinta_preto']) ? (int) $snapshot['tinta_preto'] : null,
+        isset($snapshot['tinta_ciano']) ? (int) $snapshot['tinta_ciano'] : null,
+        isset($snapshot['tinta_magenta']) ? (int) $snapshot['tinta_magenta'] : null,
+        isset($snapshot['tinta_amarelo']) ? (int) $snapshot['tinta_amarelo'] : null,
+        $statusHistorico
+    );
+}
+
+function sincronizacaoStatusFalhaPorTipo(string $tipoFalha): string
+{
+    switch ($tipoFalha) {
+        case 'login':
+            return 'Login necessario';
+        case 'frameset':
+        case 'invalida':
+            return 'Resposta invalida';
+        case 'ip_vazio':
+            return 'offline';
+        default:
+            return 'offline';
+    }
+}
+
+function sincronizacaoCombinarMotivos(array $motivos): string
+{
+    $limpos = [];
+    foreach ($motivos as $motivo) {
+        $texto = trim((string) $motivo);
+        if ($texto !== '') {
+            $limpos[] = $texto;
+        }
+    }
+
+    return implode(' | ', array_values(array_unique($limpos)));
+}
+
+function sincronizacaoMontarResultadoBase(int $id, string $nome, string $ip): array
+{
+    return [
+        'id' => $id,
+        'nome' => $nome,
+        'ip' => $ip,
+        'status' => '',
+        'preto' => null,
+        'ciano' => null,
+        'magenta' => null,
+        'amarelo' => null,
+        'paginas_total' => null,
+        'paginas_pb' => null,
+        'paginas_cor' => null,
+        'a4_pb_simples' => null,
+        'a4_cor_simples' => null,
+        'a4_pb_duplex' => null,
+        'a4_cor_duplex' => null,
+        'a3_pb_simples' => null,
+        'a3_cor_simples' => null,
+        'a3_pb_duplex' => null,
+        'a3_cor_duplex' => null,
+        'ok' => false,
+        'parcial' => false,
+        'classificacao' => 'falha',
+        'erro' => '',
+        'status_lido' => false,
+        'tinta_lida' => false,
+        'paginas_lidas' => false,
+        'a4_lido' => false,
+        'a3_lido' => false,
+        'protocolo_status_tinta' => '',
+        'url_status_tinta' => '',
+        'protocolo_uso' => '',
+        'url_uso' => '',
+        'fallback_http_status_tinta' => false,
+        'fallback_http_uso' => false,
+        'dados_gravados' => false,
+        'campos_gravados' => [],
+        'historico_gravado' => false,
+    ];
+}
+
 function sincronizarImpressoraPorRegistro(
     mysqli $conn,
     array $impressora,
@@ -1001,252 +1614,193 @@ function sincronizarImpressoraPorRegistro(
     $id = (int) ($impressora['id'] ?? 0);
     $nome = trim((string) ($impressora['nome'] ?? ''));
     $ip = trim((string) ($impressora['ip'] ?? ''));
-    $debugSyncAtivo = sincronizacaoDebugAtivo($ip);
-    $nomeIpArquivo = preg_replace('/[^0-9A-Za-z._-]/', '_', $ip) ?: 'sem_ip';
-    $arquivoDebugSync = sincronizacaoDiretorioDebug() . '/debug_fluxo_sync_' . $nomeIpArquivo . '.log';
-    $gravarDebugSync = static function (string $linha) use ($debugSyncAtivo, $arquivoDebugSync): void {
-        sincronizacaoGravarDebug($debugSyncAtivo, $arquivoDebugSync, $linha);
-    };
+    $arquivoLog = sincronizacaoDiretorioDebug() . '/sincronizacao_' . sincronizacaoNormalizarNomeArquivo($ip, 'sem_ip_' . ($id > 0 ? $id : '0')) . '.log';
+    $logger = sincronizacaoCriarLogger($arquivoLog);
+    $resultado = sincronizacaoMontarResultadoBase($id, $nome, $ip);
 
-    $resultado = [
-        'id' => $id,
-        'nome' => $nome,
-        'ip' => $ip,
-        'status' => 'offline',
-        'preto' => null,
-        'ciano' => null,
-        'magenta' => null,
-        'amarelo' => null,
-        'ok' => false,
-        'erro' => '',
-    ];
-    $paginasTotal = null;
-    $paginasPb = null;
-    $paginasCor = null;
-    $a4PbSimples = null;
-    $a4CorSimples = null;
-    $a4PbDuplex = null;
-    $a4CorDuplex = null;
-    $a3PbSimples = null;
-    $a3CorSimples = null;
-    $a3PbDuplex = null;
-    $a3CorDuplex = null;
-
-    if ($debugSyncAtivo) {
-        $gravarDebugSync(str_repeat('=', 72));
-        $gravarDebugSync('Data/Hora: ' . date('Y-m-d H:i:s'));
-        $gravarDebugSync('id da impressora: ' . $id);
-        $gravarDebugSync('ip: ' . $ip);
-    }
+    $logger(str_repeat('=', 90));
+    $logger('Data/Hora: ' . date('Y-m-d H:i:s'));
+    $logger('Impressora: ' . ($nome !== '' ? $nome : 'Sem nome'));
+    $logger('ID: ' . $id);
+    $logger('IP: ' . ($ip !== '' ? $ip : 'Sem IP'));
 
     if ($id <= 0) {
         $resultado['erro'] = 'ID da impressora invalido.';
+        $logger('Falha: ' . $resultado['erro']);
         return $resultado;
     }
-
-    $colunaUpdateFalha = $atualizarUltimaAtualizacaoEmFalha ? $colunaUltimaAtualizacao : null;
 
     if ($ip === '') {
-        $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUpdateFalha);
-        if ($update['ok']) {
-            $historico = inserirHistoricoImpressora(
-                $conn,
-                $id,
-                $paginasTotal,
-                $paginasPb,
-                $paginasCor,
-                $a4PbSimples,
-                $a4CorSimples,
-                $a4PbDuplex,
-                $a4CorDuplex,
-                $a3PbSimples,
-                $a3CorSimples,
-                $a3PbDuplex,
-                $a3CorDuplex,
-                null,
-                null,
-                null,
-                null,
-                'offline'
-            );
-            $gravarDebugSync('resultado insert historico (IP vazio): ' . ($historico['ok'] ? 'SUCESSO' : 'FALHOU'));
-            if (!$historico['ok']) {
-                $gravarDebugSync('erro insert historico (IP vazio): ' . $historico['erro']);
-                $resultado['erro'] = 'IP vazio. ' . $historico['erro'];
-                return $resultado;
-            }
-        }
-
-        $resultado['erro'] = $update['ok'] ? 'IP vazio.' : $update['erro'];
+        $statusFalha = sincronizacaoStatusFalhaPorTipo('ip_vazio');
+        $update = atualizarCamposImpressora($conn, $id, ['status_impressora' => $statusFalha], null, false);
+        $resultado['status'] = $statusFalha;
+        $resultado['erro'] = 'IP vazio.';
+        $resultado['dados_gravados'] = !empty($update['ok']);
+        $resultado['campos_gravados'] = $update['campos'] ?? [];
+        $logger('Status salvo em falha: ' . $statusFalha);
+        $logger('Dados gravados no banco: ' . sincronizacaoBoolTexto(!empty($update['ok'])));
+        $logger('Historico gravado: NAO');
         return $resultado;
     }
 
-    $leitura = buscarHtmlInfoImpressora($ip);
-    $falhouConexao = $leitura['erro'] !== '' || $leitura['html'] === null || $leitura['http'] !== 200;
+    $coletaStatusTinta = coletarStatusETintaImpressora($ip, $logger);
+    $coletaUso = buscarUsoImpressora($ip, $logger);
 
-    if ($falhouConexao) {
-        $update = atualizarDadosImpressora($conn, $id, 'offline', null, null, null, null, $colunaUpdateFalha);
-        if (!$update['ok']) {
-            $resultado['erro'] = $update['erro'];
-            return $resultado;
+    $resultado['status_lido'] = (bool) ($coletaStatusTinta['status_lido'] ?? false);
+    $resultado['tinta_lida'] = (bool) ($coletaStatusTinta['tinta_lida'] ?? false);
+    $resultado['paginas_lidas'] = (bool) ($coletaUso['paginas_lidas'] ?? false);
+    $resultado['a4_lido'] = (bool) ($coletaUso['a4_lido'] ?? false);
+    $resultado['a3_lido'] = (bool) ($coletaUso['a3_lido'] ?? false);
+    $resultado['protocolo_status_tinta'] = (string) (($coletaStatusTinta['meta']['protocolo'] ?? '') ?: '');
+    $resultado['url_status_tinta'] = (string) (($coletaStatusTinta['meta']['url'] ?? '') ?: '');
+    $resultado['fallback_http_status_tinta'] = !empty($coletaStatusTinta['meta']['fallback_http']);
+    $resultado['protocolo_uso'] = (string) (($coletaUso['meta']['protocolo'] ?? '') ?: '');
+    $resultado['url_uso'] = (string) (($coletaUso['meta']['url'] ?? '') ?: '');
+    $resultado['fallback_http_uso'] = !empty($coletaUso['meta']['fallback_http']);
+
+    $camposParaPersistir = [];
+    if (!empty($coletaStatusTinta['status_lido']) && !empty($coletaStatusTinta['status'])) {
+        $camposParaPersistir['status_impressora'] = (string) $coletaStatusTinta['status'];
+    }
+
+    foreach (['tinta_preto', 'tinta_ciano', 'tinta_magenta', 'tinta_amarelo'] as $campoTinta) {
+        if (isset($coletaStatusTinta[$campoTinta]) && $coletaStatusTinta[$campoTinta] !== null) {
+            $camposParaPersistir[$campoTinta] = (int) $coletaStatusTinta[$campoTinta];
         }
+    }
 
-        $mensagemErro = $leitura['erro'] !== '' ? $leitura['erro'] : ('HTTP ' . (int) $leitura['http']);
-        $historico = inserirHistoricoImpressora(
-            $conn,
-            $id,
-            $paginasTotal,
-            $paginasPb,
-            $paginasCor,
-            $a4PbSimples,
-            $a4CorSimples,
-            $a4PbDuplex,
-            $a4CorDuplex,
-            $a3PbSimples,
-            $a3CorSimples,
-            $a3PbDuplex,
-            $a3CorDuplex,
-            null,
-            null,
-            null,
-            null,
-            'offline'
-        );
-        $gravarDebugSync('resultado insert historico (falha conexao): ' . ($historico['ok'] ? 'SUCESSO' : 'FALHOU'));
-        if (!$historico['ok']) {
-            $gravarDebugSync('erro insert historico (falha conexao): ' . $historico['erro']);
-            $resultado['erro'] = 'Falha ao acessar impressora: ' . $mensagemErro . ' | ' . $historico['erro'];
-            return $resultado;
+    $mapaUsoParaBanco = [
+        'total' => 'paginas_total',
+        'pb' => 'paginas_pb',
+        'cor' => 'paginas_cor',
+        'a4_pb_simples' => 'a4_pb_simples',
+        'a4_cor_simples' => 'a4_cor_simples',
+        'a4_pb_duplex' => 'a4_pb_duplex',
+        'a4_cor_duplex' => 'a4_cor_duplex',
+        'a3_pb_simples' => 'a3_pb_simples',
+        'a3_cor_simples' => 'a3_cor_simples',
+        'a3_pb_duplex' => 'a3_pb_duplex',
+        'a3_cor_duplex' => 'a3_cor_duplex',
+    ];
+
+    foreach ($mapaUsoParaBanco as $campoOrigem => $campoBanco) {
+        if (isset($coletaUso['dados'][$campoOrigem]) && $coletaUso['dados'][$campoOrigem] !== null) {
+            $camposParaPersistir[$campoBanco] = (int) $coletaUso['dados'][$campoOrigem];
         }
+    }
 
-        $resultado['erro'] = 'Falha ao acessar impressora: ' . $mensagemErro;
+    $blocoStatusTinta = (string) ($coletaStatusTinta['classificacao'] ?? 'falha');
+    $blocoUso = (string) ($coletaUso['classificacao'] ?? 'falha');
+    $classificacaoFinal = 'falha';
+    if ($blocoStatusTinta === 'sucesso' && $blocoUso === 'sucesso') {
+        $classificacaoFinal = 'sucesso';
+    } elseif ($blocoStatusTinta !== 'falha' || $blocoUso !== 'falha') {
+        $classificacaoFinal = 'parcial';
+    }
+
+    $logger('Resumo leitura status/tinta: ' . $blocoStatusTinta);
+    $logger('Resumo leitura uso: ' . $blocoUso);
+    $logger('Fallback HTTP status/tinta: ' . sincronizacaoBoolTexto($resultado['fallback_http_status_tinta']));
+    $logger('Fallback HTTP uso: ' . sincronizacaoBoolTexto($resultado['fallback_http_uso']));
+
+    if ($classificacaoFinal === 'falha') {
+        $tipoFalhaPrincipal = (string) (($coletaStatusTinta['meta']['tipo_falha'] ?? '') ?: ($coletaUso['meta']['tipo_falha'] ?? 'desconhecida'));
+        $statusFalha = sincronizacaoStatusFalhaPorTipo($tipoFalhaPrincipal);
+        $updateFalha = atualizarCamposImpressora($conn, $id, ['status_impressora' => $statusFalha], null, false);
+
+        $resultado['status'] = $statusFalha;
+        $resultado['erro'] = sincronizacaoCombinarMotivos([
+            $coletaStatusTinta['motivo'] ?? '',
+            $coletaUso['motivo'] ?? '',
+            $coletaStatusTinta['meta']['motivo_falha'] ?? '',
+            $coletaUso['meta']['motivo_falha'] ?? '',
+        ]);
+        $resultado['dados_gravados'] = !empty($updateFalha['ok']);
+        $resultado['campos_gravados'] = $updateFalha['campos'] ?? [];
+
+        $logger('Classificacao final: FALHA');
+        $logger('Status salvo em falha: ' . $statusFalha);
+        $logger('Dados gravados no banco: ' . sincronizacaoBoolTexto(!empty($updateFalha['ok'])));
+        $logger('Historico gravado: NAO');
+        $logger('Motivo da falha: ' . $resultado['erro']);
         return $resultado;
     }
 
-    $html = (string) $leitura['html'];
-    $status = extrairStatusImpressora($html);
-    $preto = extrairNivelPorCor($html, 'BK');
-    $ciano = extrairNivelPorCor($html, 'C');
-    $magenta = extrairNivelPorCor($html, 'M');
-    $amarelo = extrairNivelPorCor($html, 'Y');
-
-    $update = atualizarDadosImpressora(
-        $conn,
-        $id,
-        $status,
-        $preto,
-        $ciano,
-        $magenta,
-        $amarelo,
-        $colunaUltimaAtualizacao
-    );
-
-    if (!$update['ok']) {
-        $resultado['erro'] = $update['erro'];
+    $atualizarUltimaAtualizacao = $classificacaoFinal === 'sucesso';
+    $update = atualizarCamposImpressora($conn, $id, $camposParaPersistir, $colunaUltimaAtualizacao, $atualizarUltimaAtualizacao);
+    if (empty($update['ok'])) {
+        $resultado['erro'] = (string) ($update['erro'] ?? 'Falha ao atualizar dados da impressora.');
+        $logger('Falha ao gravar no banco: ' . $resultado['erro']);
         return $resultado;
     }
 
-    $uso = buscarUsoImpressora($ip);
-    $gravarDebugSync('retorno buscarUsoImpressora: ' . var_export($uso, true));
-    if ($uso) {
-        $sql = "UPDATE impressoras SET 
-            paginas_total = ?, 
-            paginas_pb = ?, 
-            paginas_cor = ?,
-            a4_pb_simples = ?,
-            a4_cor_simples = ?,
-            a4_pb_duplex = ?,
-            a4_cor_duplex = ?,
-            a3_pb_simples = ?,
-            a3_cor_simples = ?,
-            a3_pb_duplex = ?,
-            a3_cor_duplex = ?";
-        if ($colunaUltimaAtualizacao !== null && preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $colunaUltimaAtualizacao)) {
-            $sql .= ", " . $colunaUltimaAtualizacao . " = NOW()";
-        }
-        $sql .= ' WHERE id = ?';
-        $gravarDebugSync('SQL usado no update das paginas: ' . preg_replace('/\s+/', ' ', trim($sql)));
+    $snapshot = buscarSnapshotImpressora($conn, $id);
+    if ($snapshot === null) {
+        $resultado['erro'] = 'Falha ao recarregar snapshot da impressora apos update.';
+        $logger($resultado['erro']);
+        return $resultado;
+    }
 
-        $stmt = $conn->prepare($sql);
-        $gravarDebugSync('resultado prepare(): ' . ($stmt ? 'SUCESSO' : 'FALHOU'));
-        if ($stmt) {
-            $paginasTotal = isset($uso['total']) && is_numeric($uso['total']) ? (int) $uso['total'] : null;
-            $paginasPb = isset($uso['pb']) && is_numeric($uso['pb']) ? (int) $uso['pb'] : null;
-            $paginasCor = isset($uso['cor']) && is_numeric($uso['cor']) ? (int) $uso['cor'] : null;
+    $resultado['status'] = (string) ($snapshot['status_impressora'] ?? '');
+    $resultado['preto'] = $snapshot['tinta_preto'] ?? null;
+    $resultado['ciano'] = $snapshot['tinta_ciano'] ?? null;
+    $resultado['magenta'] = $snapshot['tinta_magenta'] ?? null;
+    $resultado['amarelo'] = $snapshot['tinta_amarelo'] ?? null;
+    $resultado['paginas_total'] = $snapshot['paginas_total'] ?? null;
+    $resultado['paginas_pb'] = $snapshot['paginas_pb'] ?? null;
+    $resultado['paginas_cor'] = $snapshot['paginas_cor'] ?? null;
+    $resultado['a4_pb_simples'] = $snapshot['a4_pb_simples'] ?? null;
+    $resultado['a4_cor_simples'] = $snapshot['a4_cor_simples'] ?? null;
+    $resultado['a4_pb_duplex'] = $snapshot['a4_pb_duplex'] ?? null;
+    $resultado['a4_cor_duplex'] = $snapshot['a4_cor_duplex'] ?? null;
+    $resultado['a3_pb_simples'] = $snapshot['a3_pb_simples'] ?? null;
+    $resultado['a3_cor_simples'] = $snapshot['a3_cor_simples'] ?? null;
+    $resultado['a3_pb_duplex'] = $snapshot['a3_pb_duplex'] ?? null;
+    $resultado['a3_cor_duplex'] = $snapshot['a3_cor_duplex'] ?? null;
+    $resultado['dados_gravados'] = true;
+    $resultado['campos_gravados'] = $update['campos'] ?? [];
 
-            $a4PbSimples = isset($uso['a4_pb_simples']) && is_numeric($uso['a4_pb_simples']) ? (int) $uso['a4_pb_simples'] : null;
-            $a4CorSimples = isset($uso['a4_cor_simples']) && is_numeric($uso['a4_cor_simples']) ? (int) $uso['a4_cor_simples'] : null;
-            $a4PbDuplex = isset($uso['a4_pb_duplex']) && is_numeric($uso['a4_pb_duplex']) ? (int) $uso['a4_pb_duplex'] : null;
-            $a4CorDuplex = isset($uso['a4_cor_duplex']) && is_numeric($uso['a4_cor_duplex']) ? (int) $uso['a4_cor_duplex'] : null;
-            $a3PbSimples = isset($uso['a3_pb_simples']) && is_numeric($uso['a3_pb_simples']) ? (int) $uso['a3_pb_simples'] : null;
-            $a3CorSimples = isset($uso['a3_cor_simples']) && is_numeric($uso['a3_cor_simples']) ? (int) $uso['a3_cor_simples'] : null;
-            $a3PbDuplex = isset($uso['a3_pb_duplex']) && is_numeric($uso['a3_pb_duplex']) ? (int) $uso['a3_pb_duplex'] : null;
-            $a3CorDuplex = isset($uso['a3_cor_duplex']) && is_numeric($uso['a3_cor_duplex']) ? (int) $uso['a3_cor_duplex'] : null;
-
-            $stmt->bind_param(
-                'iiiiiiiiiiii',
-                $paginasTotal,
-                $paginasPb,
-                $paginasCor,
-                $a4PbSimples,
-                $a4CorSimples,
-                $a4PbDuplex,
-                $a4CorDuplex,
-                $a3PbSimples,
-                $a3CorSimples,
-                $a3PbDuplex,
-                $a3CorDuplex,
-                $id
-            );
-            $okExecute = $stmt->execute();
-            $gravarDebugSync('resultado execute(): ' . ($okExecute ? 'SUCESSO' : 'FALHOU'));
-            $gravarDebugSync('erro statement: ' . ($stmt->error !== '' ? $stmt->error : 'nenhum'));
-            $stmt->close();
+    $statusHistorico = (string) ($snapshot['status_impressora'] ?? 'Sem status');
+    if ($classificacaoFinal === 'parcial') {
+        $statusHistorico = 'PARCIAL: ' . $statusHistorico;
+        if (function_exists('mb_substr')) {
+            $statusHistorico = mb_substr($statusHistorico, 0, 30);
         } else {
-            $gravarDebugSync('erro statement: ' . ($conn->error !== '' ? $conn->error : 'prepare retornou false sem mensagem'));
+            $statusHistorico = substr($statusHistorico, 0, 30);
         }
-    } else {
-        $gravarDebugSync('update de paginas ignorado porque retorno de uso foi nulo/vazio.');
     }
 
-    $historico = inserirHistoricoImpressora(
-        $conn,
-        $id,
-        $paginasTotal,
-        $paginasPb,
-        $paginasCor,
-        $a4PbSimples,
-        $a4CorSimples,
-        $a4PbDuplex,
-        $a4CorDuplex,
-        $a3PbSimples,
-        $a3CorSimples,
-        $a3PbDuplex,
-        $a3CorDuplex,
-        $preto,
-        $ciano,
-        $magenta,
-        $amarelo,
-        $status
-    );
-    $gravarDebugSync('resultado insert historico (sucesso sync): ' . ($historico['ok'] ? 'SUCESSO' : 'FALHOU'));
-    if (!$historico['ok']) {
-        $gravarDebugSync('erro insert historico (sucesso sync): ' . $historico['erro']);
-        $resultado['status'] = $status;
-        $resultado['preto'] = $preto;
-        $resultado['ciano'] = $ciano;
-        $resultado['magenta'] = $magenta;
-        $resultado['amarelo'] = $amarelo;
-        $resultado['erro'] = $historico['erro'];
-        return $resultado;
+    $historico = inserirHistoricoImpressoraPorSnapshot($conn, $id, $snapshot, $statusHistorico);
+    $resultado['historico_gravado'] = !empty($historico['ok']);
+
+    $motivos = [
+        $coletaStatusTinta['motivo'] ?? '',
+        $coletaUso['motivo'] ?? '',
+    ];
+
+    if (empty($historico['ok'])) {
+        $motivos[] = $historico['erro'] ?? 'Falha ao inserir historico.';
+        $classificacaoFinal = 'parcial';
     }
 
-    $resultado['status'] = $status;
-    $resultado['preto'] = $preto;
-    $resultado['ciano'] = $ciano;
-    $resultado['magenta'] = $magenta;
-    $resultado['amarelo'] = $amarelo;
-    $resultado['ok'] = true;
+    $resultado['classificacao'] = $classificacaoFinal;
+    $resultado['ok'] = $classificacaoFinal === 'sucesso';
+    $resultado['parcial'] = $classificacaoFinal === 'parcial';
+    $resultado['erro'] = $classificacaoFinal === 'sucesso' ? '' : sincronizacaoCombinarMotivos($motivos);
+
+    $logger('Classificacao final: ' . strtoupper($resultado['classificacao']));
+    $logger('Status foi lido: ' . sincronizacaoBoolTexto($resultado['status_lido']));
+    $logger('Tintas foram lidas: ' . sincronizacaoBoolTexto($resultado['tinta_lida']));
+    $logger('Paginas foram lidas: ' . sincronizacaoBoolTexto($resultado['paginas_lidas']));
+    $logger('A4 foi lido: ' . sincronizacaoBoolTexto($resultado['a4_lido']));
+    $logger('A3 foi lido: ' . sincronizacaoBoolTexto($resultado['a3_lido']));
+    $logger('Campos gravados no banco: ' . (!empty($resultado['campos_gravados']) ? implode(', ', $resultado['campos_gravados']) : 'nenhum'));
+    $logger('ultima_atualizacao atualizada: ' . sincronizacaoBoolTexto($atualizarUltimaAtualizacao));
+    $logger('Historico gravado: ' . sincronizacaoBoolTexto($resultado['historico_gravado']));
+    if ($resultado['erro'] !== '') {
+        $logger('Motivo final: ' . $resultado['erro']);
+    }
+
     return $resultado;
 }
 

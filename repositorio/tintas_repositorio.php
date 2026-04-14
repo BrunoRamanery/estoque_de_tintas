@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Repositorio de tintas.
  *
@@ -7,14 +7,14 @@
 
 function repo_tintas_buscar_por_modelo(mysqli $conn, string $modelo, string $busca = ''): array
 {
-    $sql = 'SELECT id, impressora, modelo, cor, quantidade, mes, ano
+    $sql = 'SELECT id, COALESCE(impressora, \'\') AS impressora, modelo, cor, quantidade, mes, ano
             FROM tinta
             WHERE modelo = ?';
     $types = 's';
     $params = [$modelo];
 
     if ($busca !== '') {
-        $sql .= ' AND (impressora LIKE ? OR cor LIKE ? OR CAST(mes AS CHAR) LIKE ? OR CAST(ano AS CHAR) LIKE ?)';
+        $sql .= ' AND (COALESCE(impressora, \'\') LIKE ? OR cor LIKE ? OR CAST(mes AS CHAR) LIKE ? OR CAST(ano AS CHAR) LIKE ?)';
         $buscaLike = '%' . $busca . '%';
         $types .= 'ssss';
         $params[] = $buscaLike;
@@ -23,7 +23,7 @@ function repo_tintas_buscar_por_modelo(mysqli $conn, string $modelo, string $bus
         $params[] = $buscaLike;
     }
 
-    $sql .= ' ORDER BY ano ASC, mes ASC, cor ASC, impressora ASC';
+    $sql .= ' ORDER BY ano ASC, mes ASC, cor ASC, COALESCE(impressora, \'\') ASC';
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
@@ -70,7 +70,7 @@ function buscar_modelos_agrupados(mysqli $conn, array $filtros = []): array
     $types = '';
 
     if ($busca !== '') {
-        $sql .= ' AND (impressora LIKE ? OR modelo LIKE ? OR cor LIKE ?)';
+        $sql .= ' AND (COALESCE(impressora, \'\') LIKE ? OR modelo LIKE ? OR cor LIKE ?)';
         $buscaLike = '%' . $busca . '%';
         $params[] = $buscaLike;
         $params[] = $buscaLike;
@@ -133,7 +133,7 @@ function buscar_modelos_completo(mysqli $conn, array $filtros = []): array
     $types = '';
 
     if ($busca !== '') {
-        $sql .= ' AND (impressora LIKE ? OR modelo LIKE ? OR cor LIKE ?)';
+        $sql .= ' AND (COALESCE(impressora, \'\') LIKE ? OR modelo LIKE ? OR cor LIKE ?)';
         $buscaLike = '%' . $busca . '%';
         $params[] = $buscaLike;
         $params[] = $buscaLike;
@@ -270,10 +270,10 @@ function buscar_lista_compras(mysqli $conn): array
 function buscar_tintas_por_modelo(mysqli $conn, string $modelo): array
 {
     $stmt = $conn->prepare(
-        'SELECT id, impressora, modelo, cor, quantidade, mes, ano
+        'SELECT id, COALESCE(impressora, \'\') AS impressora, modelo, cor, quantidade, mes, ano
          FROM tinta
          WHERE modelo = ?
-         ORDER BY ano ASC, mes ASC, cor ASC, impressora ASC'
+         ORDER BY ano ASC, mes ASC, cor ASC, COALESCE(impressora, \'\') ASC'
     );
 
     if (!$stmt) {
@@ -295,7 +295,7 @@ function buscar_tintas_por_modelo(mysqli $conn, string $modelo): array
 
 function buscar_tinta_por_id(mysqli $conn, int $id): ?array
 {
-    $stmt = $conn->prepare('SELECT id, impressora, modelo, cor, quantidade, mes, ano FROM tinta WHERE id = ?');
+    $stmt = $conn->prepare('SELECT id, COALESCE(impressora, \'\') AS impressora, modelo, cor, quantidade, mes, ano FROM tinta WHERE id = ?');
     if (!$stmt) {
         throw new RuntimeException('Erro ao carregar o registro.');
     }
@@ -334,7 +334,7 @@ function normalizar_lista_impressoras(string ...$valores): string
 
 function buscar_tinta_por_chave_estoque(mysqli $conn, string $modelo, string $cor, int $mes, int $ano, ?int $ignorarId = null): ?array
 {
-    $sql = 'SELECT id, impressora, modelo, cor, quantidade, mes, ano
+    $sql = 'SELECT id, COALESCE(impressora, \'\') AS impressora, modelo, cor, quantidade, mes, ano
             FROM tinta
             WHERE modelo = ? AND cor = ? AND mes = ? AND ano = ?';
 
@@ -369,6 +369,7 @@ function inserir_tinta(mysqli $conn, array $dadosFormulario, array $dadosParsead
     $conn->begin_transaction();
 
     try {
+        $impressoraNormalizada = normalizar_lista_impressoras((string) ($dadosFormulario['impressora'] ?? ''));
         $registroExistente = buscar_tinta_por_chave_estoque(
             $conn,
             $dadosFormulario['modelo'],
@@ -380,7 +381,7 @@ function inserir_tinta(mysqli $conn, array $dadosFormulario, array $dadosParsead
         if ($registroExistente) {
             $impressoraCombinada = normalizar_lista_impressoras(
                 (string) ($registroExistente['impressora'] ?? ''),
-                $dadosFormulario['impressora']
+                $impressoraNormalizada
             );
 
             $novaQuantidade = (int) $registroExistente['quantidade'] + (int) $dadosParseados['quantidade'];
@@ -417,7 +418,7 @@ function inserir_tinta(mysqli $conn, array $dadosFormulario, array $dadosParsead
 
         $stmt->bind_param(
             'sssiii',
-            $dadosFormulario['impressora'],
+            $impressoraNormalizada,
             $dadosFormulario['modelo'],
             $dadosFormulario['cor'],
             $dadosParseados['quantidade'],
@@ -452,6 +453,7 @@ function atualizar_tinta(mysqli $conn, int $id, array $dadosFormulario, array $d
     $conn->begin_transaction();
 
     try {
+        $impressoraNormalizada = normalizar_lista_impressoras((string) ($dadosFormulario['impressora'] ?? ''));
         $registroAtual = buscar_tinta_por_id($conn, $id);
         if (!$registroAtual) {
             throw new RuntimeException('Registro nao encontrado para atualizacao.');
@@ -469,7 +471,7 @@ function atualizar_tinta(mysqli $conn, int $id, array $dadosFormulario, array $d
         if ($registroExistente) {
             $impressoraCombinada = normalizar_lista_impressoras(
                 (string) ($registroExistente['impressora'] ?? ''),
-                $dadosFormulario['impressora']
+                $impressoraNormalizada
             );
             $novaQuantidade = (int) $registroExistente['quantidade'] + (int) $dadosParseados['quantidade'];
 
@@ -516,8 +518,6 @@ function atualizar_tinta(mysqli $conn, int $id, array $dadosFormulario, array $d
             throw new RuntimeException('Erro ao preparar a atualizacao.');
         }
 
-        $impressoraNormalizada = normalizar_lista_impressoras($dadosFormulario['impressora']);
-
         $stmt->bind_param(
             'sssiiii',
             $impressoraNormalizada,
@@ -561,4 +561,3 @@ function excluir_tinta(mysqli $conn, int $id): bool
     $stmt->close();
     return $ok;
 }
-

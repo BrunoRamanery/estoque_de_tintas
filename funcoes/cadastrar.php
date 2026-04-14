@@ -63,7 +63,7 @@ $caminhoCss = '../css/principal.css';
                 <div class="pagina-hero__chips">
                     <span class="pagina-hero__chip">
                         <i class="fa-solid fa-print"></i>
-                        Vinculo com impressora
+                        Origem opcional
                     </span>
                     <span class="pagina-hero__chip">
                         <i class="fa-solid fa-calendar-days"></i>
@@ -102,8 +102,8 @@ $caminhoCss = '../css/principal.css';
             <input type="hidden" name="csrf_token" value="<?= e($csrfToken) ?>">
 
             <div class="campo">
-                <label for="impressora"><i class="fa-solid fa-print"></i> Impressora</label>
-                <input type="text" name="impressora" id="impressora" value="<?= e($formData['impressora']) ?>" required maxlength="100" placeholder="Digite o nome da impressora">
+                <label for="impressora"><i class="fa-solid fa-print"></i> Impressora opcional</label>
+                <input type="text" name="impressora" id="impressora" value="<?= e($formData['impressora']) ?>" maxlength="100" placeholder="Informe a origem apenas se precisar">
             </div>
 
             <div class="campo">

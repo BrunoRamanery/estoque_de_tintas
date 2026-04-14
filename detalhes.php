@@ -123,7 +123,7 @@ $caminhoCss = 'css/principal.css';
 
     <form method="GET" class="filtros">
         <input type="hidden" name="modelo" value="<?= e($modelo) ?>">
-        <input type="text" name="busca" value="<?= e($busca) ?>" placeholder="Buscar por impressora, cor, mes ou ano">
+        <input type="text" name="busca" value="<?= e($busca) ?>" placeholder="Buscar por impressora opcional, cor, mes ou ano">
         <button type="submit" class="botao">Filtrar</button>
         <a class="botao botao-secundario" href="detalhes.php?modelo=<?= urlencode($modelo) ?>">Limpar</a>
     </form>
@@ -131,7 +131,7 @@ $caminhoCss = 'css/principal.css';
     <div class="tabela">
         <table>
             <tr>
-                <th>Impressora</th>
+                <th>Impressora / origem</th>
                 <th>Cor</th>
                 <th>Qtd</th>
                 <th>Validade</th>
@@ -142,7 +142,7 @@ $caminhoCss = 'css/principal.css';
             <?php if (!empty($tintas)): ?>
                 <?php foreach ($tintas as $t): ?>
                     <tr>
-                        <td><?= e($t['impressora']) ?></td>
+                        <td><?= e(trim((string) ($t['impressora'] ?? '')) !== '' ? $t['impressora'] : '-') ?></td>
                         <td><?= e(strtoupper((string) $t['cor'])) ?></td>
                         <td><?= e($t['quantidade']) ?></td>
                         <td><?= e((int) $t['mes']) ?>/<?= e((int) $t['ano']) ?></td>

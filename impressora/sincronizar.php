@@ -65,6 +65,12 @@ if (!empty($resultado['ok'])) {
         'sucesso',
         'Sincronizacao concluida para ' . (string) ($resultado['nome'] ?? 'impressora') . '.'
     );
+} elseif (!empty($resultado['parcial'])) {
+    $detalhe = trim((string) ($resultado['erro'] ?? ''));
+    definir_mensagem_flash(
+        'erro',
+        'Sincronizacao parcial de ' . (string) ($resultado['nome'] ?? 'impressora') . ($detalhe !== '' ? ': ' . $detalhe : '.')
+    );
 } else {
     $detalhe = trim((string) ($resultado['erro'] ?? ''));
     definir_mensagem_flash(

@@ -109,7 +109,7 @@ $caminhoCss = '../css/principal.css';
 
             <aside class="pagina-hero__painel">
                 <span class="pagina-hero__rotulo">Contexto do registro</span>
-                <strong><?= e($formData['impressora'] !== '' ? $formData['impressora'] : 'Impressora nao informada') ?></strong>
+                <strong><?= e($formData['impressora'] !== '' ? $formData['impressora'] : 'Origem nao informada') ?></strong>
                 <small>Ao salvar, o sistema continua aplicando as mesmas validacoes e a mesma consolidacao de registros ja existente.</small>
 
                 <div class="pagina-hero__metricas">
@@ -138,8 +138,8 @@ $caminhoCss = '../css/principal.css';
             <input type="hidden" name="retorno_modelo" value="<?= e($retornoModelo) ?>">
 
             <div class="campo">
-                <label for="impressora"><i class="fa-solid fa-print"></i> Impressora</label>
-                <input type="text" name="impressora" id="impressora" value="<?= e($formData['impressora']) ?>" required maxlength="100">
+                <label for="impressora"><i class="fa-solid fa-print"></i> Impressora opcional</label>
+                <input type="text" name="impressora" id="impressora" value="<?= e($formData['impressora']) ?>" maxlength="100" placeholder="Informe a origem apenas se precisar">
             </div>
 
             <div class="campo">

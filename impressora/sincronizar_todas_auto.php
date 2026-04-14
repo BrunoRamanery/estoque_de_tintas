@@ -31,19 +31,36 @@ function montarLinhaResultado(array $resultado): string
 
     if (!empty($resultado['ok'])) {
         return sprintf(
-            '[OK] %s - %s - Status: %s - BK:%s C:%s M:%s Y:%s',
+            '[SUCESSO] %s - %s - Status: %s - BK:%s C:%s M:%s Y:%s - Uso:%s - Historico:%s',
             $nomeTexto,
             $ipTexto,
             $status,
             formatarPercentual($resultado['preto'] ?? null),
             formatarPercentual($resultado['ciano'] ?? null),
             formatarPercentual($resultado['magenta'] ?? null),
-            formatarPercentual($resultado['amarelo'] ?? null)
+            formatarPercentual($resultado['amarelo'] ?? null),
+            (!empty($resultado['paginas_lidas']) || !empty($resultado['a4_lido']) || !empty($resultado['a3_lido'])) ? 'SIM' : 'NAO',
+            !empty($resultado['historico_gravado']) ? 'SIM' : 'NAO'
+        );
+    }
+
+    if (!empty($resultado['parcial'])) {
+        $erro = trim((string) ($resultado['erro'] ?? 'Coleta parcial.'));
+        return sprintf(
+            '[PARCIAL] %s - %s - Status: %s - BK:%s C:%s M:%s Y:%s - %s',
+            $nomeTexto,
+            $ipTexto,
+            $status !== '' ? $status : 'Sem status salvo',
+            formatarPercentual($resultado['preto'] ?? null),
+            formatarPercentual($resultado['ciano'] ?? null),
+            formatarPercentual($resultado['magenta'] ?? null),
+            formatarPercentual($resultado['amarelo'] ?? null),
+            $erro
         );
     }
 
     $erro = trim((string) ($resultado['erro'] ?? 'Falha desconhecida.'));
-    return sprintf('[ERRO] %s - %s - %s', $nomeTexto, $ipTexto, $erro);
+    return sprintf('[FALHA] %s - %s - %s', $nomeTexto, $ipTexto, $erro);
 }
 
 function prepararArquivoLog(string $diretorioLogs): ?string
@@ -99,34 +116,37 @@ $consulta->free();
 $colunaUltimaAtualizacao = detectarColunaUltimaAtualizacao($conn);
 $total = count($impressoras);
 $sucesso = 0;
+$parcial = 0;
 $falhas = 0;
 
 foreach ($impressoras as $impressora) {
     try {
-        // Em automacao, falha nao deve sobrescrever ultima_atualizacao valida.
         $resultado = sincronizarImpressoraPorRegistro($conn, $impressora, $colunaUltimaAtualizacao, false);
     } catch (Throwable $erro) {
-        $idImpressora = (int) ($impressora['id'] ?? 0);
-        if ($idImpressora > 0) {
-            atualizarDadosImpressora($conn, $idImpressora, 'offline', null, null, null, null, null);
-        }
-
         $resultado = [
-            'id' => $idImpressora,
+            'id' => (int) ($impressora['id'] ?? 0),
             'nome' => (string) ($impressora['nome'] ?? ''),
             'ip' => (string) ($impressora['ip'] ?? ''),
-            'status' => 'offline',
+            'status' => '',
             'preto' => null,
             'ciano' => null,
             'magenta' => null,
             'amarelo' => null,
             'ok' => false,
+            'parcial' => false,
+            'classificacao' => 'falha',
             'erro' => 'Erro interno: ' . $erro->getMessage(),
+            'paginas_lidas' => false,
+            'a4_lido' => false,
+            'a3_lido' => false,
+            'historico_gravado' => false,
         ];
     }
 
     if (!empty($resultado['ok'])) {
         $sucesso++;
+    } elseif (!empty($resultado['parcial'])) {
+        $parcial++;
     } else {
         $falhas++;
     }
@@ -146,6 +166,7 @@ echo $rodape . PHP_EOL;
 echo 'Resumo final:' . PHP_EOL;
 echo 'Total: ' . $total . PHP_EOL;
 echo 'Sucesso: ' . $sucesso . PHP_EOL;
+echo 'Parcial: ' . $parcial . PHP_EOL;
 echo 'Falhas: ' . $falhas . PHP_EOL;
 echo 'Duracao: ' . number_format($duracaoSegundos, 2, '.', '') . 's' . PHP_EOL;
 echo $cabecalho . PHP_EOL;
@@ -154,6 +175,7 @@ escreverNoLog($arquivoLog, $rodape);
 escreverNoLog($arquivoLog, 'Resumo final:');
 escreverNoLog($arquivoLog, 'Total: ' . $total);
 escreverNoLog($arquivoLog, 'Sucesso: ' . $sucesso);
+escreverNoLog($arquivoLog, 'Parcial: ' . $parcial);
 escreverNoLog($arquivoLog, 'Falhas: ' . $falhas);
 escreverNoLog($arquivoLog, 'Duracao: ' . number_format($duracaoSegundos, 2, '.', '') . 's');
 escreverNoLog($arquivoLog, $cabecalho);

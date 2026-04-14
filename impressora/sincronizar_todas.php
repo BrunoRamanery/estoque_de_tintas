@@ -55,35 +55,53 @@ $colunaUltimaAtualizacao = detectarColunaUltimaAtualizacao($conn);
 
 $relatorio = [];
 $totalSucesso = 0;
+$totalParcial = 0;
 $totalFalha = 0;
+
+$montarResultadoErroInterno = static function (array $impressora, Throwable $erro): array {
+    return [
+        'id' => (int) ($impressora['id'] ?? 0),
+        'nome' => (string) ($impressora['nome'] ?? ''),
+        'ip' => (string) ($impressora['ip'] ?? ''),
+        'status' => '',
+        'preto' => null,
+        'ciano' => null,
+        'magenta' => null,
+        'amarelo' => null,
+        'ok' => false,
+        'parcial' => false,
+        'classificacao' => 'falha',
+        'erro' => 'Erro interno: ' . $erro->getMessage(),
+        'status_lido' => false,
+        'tinta_lida' => false,
+        'paginas_lidas' => false,
+        'a4_lido' => false,
+        'a3_lido' => false,
+        'protocolo_status_tinta' => '',
+        'url_status_tinta' => '',
+        'protocolo_uso' => '',
+        'url_uso' => '',
+        'fallback_http_status_tinta' => false,
+        'fallback_http_uso' => false,
+        'dados_gravados' => false,
+        'campos_gravados' => [],
+        'historico_gravado' => false,
+    ];
+};
 
 foreach ($impressoras as $impressora) {
     try {
         $resultado = sincronizarImpressoraPorRegistro($conn, $impressora, $colunaUltimaAtualizacao);
     } catch (Throwable $erro) {
-        $idImpressora = (int) ($impressora['id'] ?? 0);
-        if ($idImpressora > 0) {
-            atualizarDadosImpressora($conn, $idImpressora, 'offline', null, null, null, null, $colunaUltimaAtualizacao);
-        }
-
-        $resultado = [
-            'id' => $idImpressora,
-            'nome' => (string) ($impressora['nome'] ?? ''),
-            'ip' => (string) ($impressora['ip'] ?? ''),
-            'status' => 'offline',
-            'preto' => null,
-            'ciano' => null,
-            'magenta' => null,
-            'amarelo' => null,
-            'ok' => false,
-            'erro' => 'Erro interno: ' . $erro->getMessage(),
-        ];
+        $resultado = $montarResultadoErroInterno($impressora, $erro);
     }
 
     $relatorio[] = $resultado;
 
-    if ($resultado['ok']) {
+    if (!empty($resultado['ok'])) {
         $totalSucesso++;
+    } elseif (!empty($resultado['parcial'])) {
+        $totalParcial++;
     } else {
         $totalFalha++;
     }
@@ -95,12 +113,12 @@ foreach ($impressoras as $impressora) {
 $conn->close();
 
 if (!$modoRelatorio) {
-    if ($totalFalha === 0) {
+    if ($totalFalha === 0 && $totalParcial === 0) {
         definir_mensagem_flash('sucesso', 'Sincronizacao concluida com sucesso. ' . $totalSucesso . ' impressora(s) atualizada(s).');
-    } elseif ($totalSucesso === 0) {
+    } elseif ($totalSucesso === 0 && $totalParcial === 0) {
         definir_mensagem_flash('erro', 'Sincronizacao concluida com falhas. Nenhuma impressora foi atualizada.');
     } else {
-        definir_mensagem_flash('erro', 'Sincronizacao concluida com alertas. Sucesso: ' . $totalSucesso . ' | Falhas: ' . $totalFalha . '.');
+        definir_mensagem_flash('erro', 'Sincronizacao concluida com alertas. Sucesso: ' . $totalSucesso . ' | Parcial: ' . $totalParcial . ' | Falhas: ' . $totalFalha . '.');
     }
 
     $url = 'impressoras.php';
@@ -145,6 +163,10 @@ $caminhoCss = '../css/principal.css';
                         <?= e((string) $totalSucesso) ?> atualizada(s)
                     </span>
                     <span class="pagina-hero__chip">
+                        <i class="fa-solid fa-circle-half-stroke"></i>
+                        <?= e((string) $totalParcial) ?> parcial(is)
+                    </span>
+                    <span class="pagina-hero__chip">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <?= e((string) $totalFalha) ?> falha(s)
                     </span>
@@ -160,7 +182,7 @@ $caminhoCss = '../css/principal.css';
 
             <aside class="pagina-hero__painel">
                 <span class="pagina-hero__rotulo">Resumo da execucao</span>
-                <strong><?= $totalFalha === 0 ? 'Concluida sem falhas' : 'Concluida com alertas' ?></strong>
+                <strong><?= ($totalFalha === 0 && $totalParcial === 0) ? 'Concluida sem falhas' : 'Concluida com alertas' ?></strong>
                 <small>Use esta tela apenas para conferencia tecnica. A sincronizacao segue sendo gravada da mesma forma no banco e nas rotinas ja existentes.</small>
 
                 <div class="pagina-hero__metricas">
@@ -170,7 +192,7 @@ $caminhoCss = '../css/principal.css';
                     </div>
                     <div class="pagina-hero__metrica">
                         <span>Status predominante</span>
-                        <strong><?= $totalSucesso >= $totalFalha ? 'Atualizacao salva' : 'Revisar impressoras' ?></strong>
+                        <strong><?= ($totalSucesso >= ($totalParcial + $totalFalha)) ? 'Atualizacao salva' : 'Revisar impressoras' ?></strong>
                     </div>
                 </div>
             </aside>
@@ -192,6 +214,15 @@ $caminhoCss = '../css/principal.css';
                     <strong><?= e((string) $totalSucesso) ?></strong>
                     <span>Sincronizadas</span>
                     <small>Impressoras que retornaram dados e atualizaram estado.</small>
+                </div>
+            </div>
+
+            <div class="card-resumo card-breve">
+                <div class="icone-resumo"><i class="fa-solid fa-circle-half-stroke"></i></div>
+                <div>
+                    <strong><?= e((string) $totalParcial) ?></strong>
+                    <span>Parciais</span>
+                    <small>Houve leitura e gravacao util, mas parte da coleta falhou.</small>
                 </div>
             </div>
 
@@ -259,19 +290,27 @@ $caminhoCss = '../css/principal.css';
                                         <?php if (!empty($item['ok'])): ?>
                                             <span class="sincronizacao-pill sincronizacao-pill--ok">
                                                 <i class="fa-solid fa-circle-check"></i>
-                                                OK
+                                                SUCESSO
+                                            </span>
+                                        <?php elseif (!empty($item['parcial'])): ?>
+                                            <span class="impressora-pill impressora-pill--sync">
+                                                <i class="fa-solid fa-circle-half-stroke"></i>
+                                                PARCIAL
                                             </span>
                                         <?php else: ?>
                                             <span class="sincronizacao-pill sincronizacao-pill--erro">
                                                 <i class="fa-solid fa-circle-xmark"></i>
-                                                ERRO
+                                                FALHA
                                             </span>
-                                            <?php if (!empty($item['erro'])): ?>
-                                                <div class="celula-impressora">
-                                                    <span><?= e((string) $item['erro']) ?></span>
-                                                </div>
-                                            <?php endif; ?>
                                         <?php endif; ?>
+                                        <div class="celula-impressora">
+                                            <span>Status/Tinta: <?= !empty($item['status_lido']) || !empty($item['tinta_lida']) ? 'SIM' : 'NAO' ?></span>
+                                            <span>Uso: <?= !empty($item['paginas_lidas']) || !empty($item['a4_lido']) || !empty($item['a3_lido']) ? 'SIM' : 'NAO' ?></span>
+                                            <span>Historico: <?= !empty($item['historico_gravado']) ? 'SIM' : 'NAO' ?></span>
+                                            <?php if (!empty($item['erro'])): ?>
+                                                <span><?= e((string) $item['erro']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

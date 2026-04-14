@@ -116,9 +116,7 @@ function validar_dados_tinta(array $dados): array
     $mesBruto = $dados['mes'] ?? $dados['mes_raw'] ?? null;
     $anoBruto = $dados['ano'] ?? $dados['ano_raw'] ?? null;
 
-    if ($impressora === '') {
-        $erros[] = 'O campo impressora e obrigatorio.';
-    } elseif (mb_strlen($impressora) > 100) {
+    if ($impressora !== '' && mb_strlen($impressora) > 100) {
         $erros[] = 'A impressora deve ter no maximo 100 caracteres.';
     }
 

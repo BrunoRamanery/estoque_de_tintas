@@ -77,7 +77,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
         <div class="topo topo-dashboard-clean">
             <div class="titulo-bloco">
                 <h1><i class="fa-solid fa-droplet"></i> Controle de Tintas Epson</h1>
-                <p class="subtitulo">Uma visão rápida e simples para encontrar o que precisa, sem poluir a tela.</p>
+                <p class="subtitulo">Estoque consolidado por modelo, cor e validade, com leitura rapida do que precisa de atencao.</p>
             </div>
 
             <a class="botao" href="funcoes/cadastrar.php">
@@ -143,7 +143,7 @@ $jsonFlagsDashboard = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSO
                     id="busca"
                     type="text"
                     name="busca"
-                    placeholder="Pesquisar por impressora, modelo ou cor"
+                    placeholder="Pesquisar por modelo, cor ou impressora"
                     value="<?= e($filtros['busca']) ?>"
                 >
             </div>
